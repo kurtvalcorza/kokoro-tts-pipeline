@@ -20,7 +20,11 @@ base_model: hexgrad/Kokoro-82M
 
 ## Interactive Colab Tutorials
 
-This release ships no tutorial notebook (`tutorials/` is absent). The package is exercised through its test suite (`tests/`) and the run instructions in the README; a `NOTEBOOK_SPEC` 1.0 `TASK-INFERENCE` notebook is a follow-up, not a claim this card makes.
+This pipeline provides a ready-to-run interactive Google Colab notebook that exercises the repository's public API end to end — bootstrap a fresh runtime, stage and verify the pinned upstream revision, validate an input, run the task, and inspect and export the outputs:
+
+- **Task Inference Tutorial**:  
+  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kurtvalcorza/kokoro-tts-pipeline/blob/main/tutorials/kokoro_tts_colab.ipynb) [`kokoro_tts_colab.ipynb`](https://github.com/kurtvalcorza/kokoro-tts-pipeline/blob/main/tutorials/kokoro_tts_colab.ipynb)  
+  *English text-to-speech with the pinned `hexgrad/Kokoro-82M` weights: one text string and a named voice → a 24 kHz float waveform written to `outputs/` as WAV with duration and peak reported; seeded vocoder for reproducibility; no intrinsic metric exists (MOS needs listeners).*
 
 ---
 
