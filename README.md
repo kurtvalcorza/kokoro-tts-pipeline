@@ -49,6 +49,16 @@ python -c "from kokoro_tts_pipeline import KokoroTTSPipeline; r = KokoroTTSPipel
 
 Measured on CPU (float32, Windows venv, 2026-09-12): load 6.22 s, 3.25 s of audio in 0.72 s, peak amplitude 0.342.
 
+## Tutorial
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/kurtvalcorza/kokoro-tts-pipeline/blob/main/tutorials/kokoro_tts_colab.ipynb)
+
+`tutorials/kokoro_tts_colab.ipynb` is declared `TASK-INFERENCE` (see `tutorials/README.md`). Its default path authors one synthetic English sentence, surfaces `MAX_TEXT_CHARS`, the `speed` range, the language codes and the voice rule, stages the 55 git-ignored snapshot files with `stage_missing_files(..., allow_download=True)` and digest-verifies all 58 with `verify_snapshot`, seeds the vocoder and synthesises through the public API, writes a 24 kHz 16-bit PCM WAV under `outputs/`, prints duration, peak amplitude and the phoneme string, and exports the result plus provenance as JSON. No metric is reported: speech has no intrinsic ground truth and the repository ships no metric helper (MOS needs listeners; intelligibility needs an external ASR judge). BYOD is optional and gated off by default.
+
+## Release status
+
+**Candidate.** Static/unit checks do not constitute clean-runtime notebook evidence. Complete `docs/release-verification.md` against the exact release revision before calling the notebook release-grade.
+
 ## Documents
 
 - [`MODEL_CARD.md`](MODEL_CARD.md) — MODEL_CARD_SPEC 1.1 card
