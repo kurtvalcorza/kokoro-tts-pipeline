@@ -14,7 +14,7 @@ and regenerate (`python tools/build_notebook.py`; `--check` is enforced by the v
 
 | Notebook | Profile | Carrier | Capability | Default runtime | BYOD | Release status |
 |---|---|---|---|---|---|---|
-| `kokoro_tts_colab.ipynb` | `TASK-INFERENCE` | standalone (generated) | Kokoro-82M v1.0 text-to-speech on one synthetic English sentence with the `af_heart` voice pack; seeded synthesis, a 24 kHz 16-bit PCM WAV under `outputs/`, duration/peak/phonemes as run-level facts; no quality metric exists or is reported; `validate_inputs` → input manifest; `evaluation_report` → always `not-measurable` (MOS needs listeners, intelligibility needs an external ASR judge) | CPU float32 (CUDA used automatically when available, also float32) | one UTF-8 text file, gated off by default | **Candidate** — static checks pass; the clean-runtime execution row in `../docs/release-verification.md` is pending and must be recorded for the exact notebook revision before promotion |
+| `kokoro_tts_colab.ipynb` | `TASK-INFERENCE` | standalone (generated) | Kokoro-82M v1.0 text-to-speech on one synthetic English sentence with the `af_heart` voice pack; seeded synthesis, a 24 kHz 16-bit PCM WAV under `outputs/`, duration/peak/phonemes as run-level facts; no quality metric exists or is reported; `validate_inputs` → input manifest; `evaluation_report` → always `not-measurable` (MOS needs listeners, intelligibility needs an external ASR judge) | CPU float32 (CUDA used automatically when available, also float32) | one UTF-8 text file, gated off by default | **Candidate** — 8/8 default code cells passed on Colab T4 / isolated Python 3.12 on 2026-09-13; [recorded evidence](../docs/release-verification.md) awaits review and Kokoro listening review |
 
 ## Conformance notes
 
@@ -32,3 +32,5 @@ and regenerate (`python tools/build_notebook.py`; `--check` is enforced by the v
   clean-runtime execution requirement; a release review must confirm that a recorded clean run in
   `docs/release-verification.md` matches the notebook revision under review before the status is
   promoted to `Release-grade`.
+
+Current source update: snapshot validation now runs before model-library imports (Kokoro also validates the language first), so rejected requests fail with the intended validation error even when model libraries are absent. The standalone notebook was regenerated from this source. The retained 2026-09-13 GPU run identifies the earlier notebook blob; the regenerated notebook has not had a fresh GPU execution. Status remains **Candidate**.

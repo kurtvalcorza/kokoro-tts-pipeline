@@ -1,10 +1,6 @@
 # Release verification
 
-`tutorials/kokoro_tts_colab.ipynb` (`TASK-INFERENCE`) is a **release candidate** until the exact notebook revision has
-executed top-to-bottom in a clean supported runtime. Unit tests, JSON validation, code-cell
-compilation, and `tools/validate_release_assets.py` are necessary checks but are **not** runtime
-evidence under DIMER Notebook Specification 1.1. This file is the durable release-gate record for
-the notebook.
+`tutorials/kokoro_tts_colab.ipynb` (`TASK-INFERENCE`, **standalone** carrier) remains a **release candidate**. A clean Python 3.12 GPU execution of the exact notebook blob was recorded on 2026-09-13; the result and retained artifacts are below. Static checks are not runtime evidence, and promotion still requires a reviewer to accept the recorded run.
 
 ## Automatic coverage (static, every pull request)
 
@@ -73,8 +69,8 @@ Before changing the registry status from `Candidate` to `Release-grade`:
      `list_voices` and the ceilings) with no import of the repository package;
    - the synthetic pangram authored in code with its text SHA-256 printed;
    - the inline `MANIFEST` asserted against the module identity and written to `weights/kokoro-82m/`,
-     `stage_missing_files(WEIGHTS_DIR, allow_download=True)` reporting 55 files fetched from `hexgrad/Kokoro-82M`
-     at the immutable revision (the checkpoint plus 54 voice packs), `verify_snapshot` returning the
+     `stage_missing_files(WEIGHTS_DIR, allow_download=True)` reporting all 58 manifest entries fetched in an empty standalone weights directory from `hexgrad/Kokoro-82M`
+     at the immutable revision (the checkpoint, 54 voice packs and three metadata files), `verify_snapshot` returning the
      58-entry manifest, `list_voices` returning 54 names including `af_heart`, and
      `KokoroTTSPipeline.from_pretrained(weights_dir=WEIGHTS_DIR)` loading from the verified directory with
      `lang_code 'a'`, `source 'local-snapshot'` and the observed `espeak_fallback` value recorded;
@@ -106,36 +102,24 @@ A known-failing default path in the supported runtime blocks release.
 
 | Notebook | Commit / notebook blob | Date (UTC) | Executor | Outcome |
 |---|---|---|---|---|
-| `tutorials/kokoro_tts_colab.ipynb` | | | | pending — queued to the GPU lane |
+| `tutorials/kokoro_tts_colab.ipynb` | `bf509157c7133a863aa891bf7b88087b1464b946` / `ca60f5f4f3b6c3dbf48f44a0aeaeedab4c7880ad` | 2026-09-13 | Colab CLI → isolated Python 3.12.3, T4 | PASS — 8/8 cells; listening and evidence review pending; [Retained run](verification/2026-09-13/README.md) |
 
 ## Recorded executions
 
-Notebook identity is the Git blob id of `tutorials/kokoro_tts_colab.ipynb` (verify with
-`git rev-parse <commit>:tutorials/kokoro_tts_colab.ipynb`). Wall times are the sum of per-cell times reported by
-the executor and include installs and the model download; they are measurements for the stated
-runtime, not general estimates.
+Notebook identity is the Git blob of `tutorials/kokoro_tts_colab.ipynb` at the source commit in the row below. The documentation commit recording the run does not change that notebook blob. Cell wall time is the sum of recorded code-cell times, including installation and model downloads; total time additionally includes environment setup and bookkeeping. These measurements describe this one run.
 
-No execution of the notebook has been recorded. The only runtime measurements that exist for this
-repository are the pipeline smoke run documented in `MODEL_CARD.md` (Windows venv, CPU float32,
-`HF_HUB_OFFLINE=1`: load and verify 58 files 6.22 s, the pangram with `af_heart` rendered in 0.72 s
-to 78000 samples / 3.25 s, peak 0.342, unseeded). That run exercised the package, not this notebook,
-and is not notebook execution evidence.
+### Manual clean-runtime evidence
 
-| Date (UTC) | Commit / notebook blob | Executor | Path exercised | Wall | Outcome |
+| Date (UTC) | Commit / notebook blob | Executor | Path exercised | Cell wall / total | Outcome |
 |---|---|---|---|---|---|
-| — | — | — | Default sample path | — | pending — queued to the GPU lane |
+| 2026-09-13 | `bf509157c7133a863aa891bf7b88087b1464b946` / `ca60f5f4f3b6c3dbf48f44a0aeaeedab4c7880ad` | Colab CLI → fresh Python 3.12.3 venv/interpreter; Tesla T4, 15,360 MiB | Unchanged default sample, no repository checkout, empty per-model cache and weights | 184.518 s / 188.984 s | PASS — 8/8 cells; listening and evidence review pending; [Retained run](verification/2026-09-13/README.md) |
+
+The run used PyTorch `2.14.0+cu130`, `cuda:0` and `float32`. All eight code cells completed, runtime pins matched, every snapshot file was SHA-256 verified, inputs were accepted, and the negative validation probe was recorded. Results, model identity/revision, observed output, warnings, package versions, notebook outputs, executor source and cleanup evidence are retained in [the run record](verification/2026-09-13/README.md).
+
+The native hosted kernel was Python 3.13.15; its direct notebook attempt was aborted in installation after the Python-version mismatch was confirmed. The successful result above uses the repository-supported Python 3.12 interpreter on the Colab GPU. No completed native hosted-kernel run is claimed.
 
 ## Current status
 
-The notebook source is complete and passes the static checks above; **no clean-runtime execution
-has been recorded**, so the registry status is **Candidate** and the manual-evidence row is pending.
-**The standalone carrier itself — executing the carried module cell in a runtime that has no repository
-checkout — has been validated statically only (parity PASS) and never run end-to-end.** A carrier probe
-did exec the install, carried-module and identity-assert cells in a fresh interpreter with the repository
-package blocked on `sys.meta_path`, which confirms the cells define the public API without the package;
-it fetched nothing and loaded no model. The clean run will therefore be the first execution of the
-standalone path and of the staging path.
-Promotion requires a reviewer to confirm a recorded run against the notebook blob under review and
-an integrator to promote it; promotion is not performed by the builder. The commit that adds a
-recorded-execution row changes documentation only; the executed source is the commit named in the
-row.
+Clean GPU execution evidence is now recorded for the exact notebook blob above. The registry status remains **Candidate** pending a reviewer’s acceptance of the evidence and an integrator’s promotion. This documentation change performs no promotion. The run is default-sample inference/contract evidence; it does not establish model quality or a benchmark result. Kokoro listening review is still pending; WAV structure and digest were checked, but audible intelligibility and perceptual quality were not assessed.
+
+Current source update: snapshot validation now runs before model-library imports (Kokoro also validates the language first), so rejected requests fail with the intended validation error even when model libraries are absent. The standalone notebook was regenerated from this source. The retained 2026-09-13 GPU run identifies the earlier notebook blob; the regenerated notebook has not had a fresh GPU execution. Status remains **Candidate**.

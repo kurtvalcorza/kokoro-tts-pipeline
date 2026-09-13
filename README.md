@@ -57,7 +57,7 @@ Measured on CPU (float32, Windows venv, 2026-09-12): load 6.22 s, 3.25 s of audi
 
 ## Release status
 
-**Candidate.** Static/unit checks do not constitute clean-runtime notebook evidence. Complete `docs/release-verification.md` against the exact release revision before calling the notebook release-grade.
+**Candidate.** The default standalone notebook passed 8/8 unchanged code cells on a Colab Tesla T4 in an isolated Python 3.12 runtime on 2026-09-13. [Recorded GPU evidence](docs/release-verification.md) includes the exact notebook blob, exports and execution log. Release promotion awaits evidence review and Kokoro listening review; these sample execution checks do not measure general model quality.
 
 ## Documents
 
@@ -68,3 +68,5 @@ Measured on CPU (float32, Windows venv, 2026-09-12): load 6.22 s, 3.25 s of audi
 ## Licensing
 
 Repository code is Apache-2.0 (see `LICENSE`). The upstream weights are Apache-2.0; upstream records CC BY attributions for two training sources (Koniwa, SIWIS); see `docs/WEIGHTS.md`.
+
+Current source update: snapshot validation now runs before model-library imports (Kokoro also validates the language first), so rejected requests fail with the intended validation error even when model libraries are absent. The standalone notebook was regenerated from this source. The retained 2026-09-13 GPU run identifies the earlier notebook blob; the regenerated notebook has not had a fresh GPU execution. Status remains **Candidate**.

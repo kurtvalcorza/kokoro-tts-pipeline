@@ -161,14 +161,14 @@ def test_stage_missing_files_refuses_foreign_manifest(tmp_path):
         stage_missing_files(tmp_path, allow_download=True, downloader=lambda *_: None)
 
 
-def test_from_pretrained_refuses_without_snapshot(tmp_path):
+def test_from_pretrained_refuses_without_snapshot(tmp_path, forbid_model_imports):
     with pytest.raises(FileNotFoundError, match="no verified snapshot"):
         KokoroTTSPipeline.from_pretrained(device="cpu", weights_dir=tmp_path)
     with pytest.raises(FileNotFoundError, match="no verified snapshot"):
         KokoroTTSPipeline.from_pretrained(device="cpu", weights_dir=tmp_path, allow_download=True)
 
 
-def test_from_pretrained_refuses_tampered_snapshot_before_loading(tmp_path):
+def test_from_pretrained_refuses_tampered_snapshot_before_loading(tmp_path, forbid_model_imports):
     manifest_path = _write_snapshot(tmp_path)
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     manifest["files"][0]["sha256"] = "0" * 64
@@ -177,7 +177,13 @@ def test_from_pretrained_refuses_tampered_snapshot_before_loading(tmp_path):
         KokoroTTSPipeline.from_pretrained(device="cpu", weights_dir=tmp_path)
 
 
-def test_from_pretrained_rejects_unknown_lang_code(tmp_path):
+def test_from_pretrained_valid_snapshot_reaches_model_import(tmp_path, forbid_model_imports):
+    _write_snapshot(tmp_path)
+    with pytest.raises(AssertionError, match="model dependency imported before rejection: torch"):
+        KokoroTTSPipeline.from_pretrained(device="cpu", weights_dir=tmp_path)
+
+
+def test_from_pretrained_rejects_unknown_lang_code(tmp_path, forbid_model_imports):
     with pytest.raises(ValueError, match="LANG_CODES"):
         KokoroTTSPipeline.from_pretrained(device="cpu", weights_dir=tmp_path, lang_code="xx")
 
