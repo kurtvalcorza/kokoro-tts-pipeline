@@ -3,6 +3,8 @@ license: apache-2.0
 model_card_spec: "1.1"
 pipeline_tag: text-to-speech
 base_model: hexgrad/Kokoro-82M
+date_published: "2024-12-26"
+date_published_source: "Hugging Face Hub repository creation date of the exact hosted checkpoint (`createdAt`, https://huggingface.co/api/models/hexgrad/Kokoro-82M)"
 ---
 
 # Kokoro-82M v1.0 (DIMER package v0.1.0) — Text-to-Speech Model (Speech Synthesis)
@@ -11,7 +13,6 @@ base_model: hexgrad/Kokoro-82M
 [![Upstream GitHub](https://img.shields.io/badge/Upstream%20GitHub-hexgrad%2Fkokoro-181717?style=flat&logo=github&logoColor=white)](https://github.com/hexgrad/kokoro)
 [![arXiv Paper](https://img.shields.io/badge/arXiv-2306.07691-b31b1b.svg)](https://arxiv.org/abs/2306.07691)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Pipeline](https://img.shields.io/badge/Pipeline-kokoro--tts--pipeline-2ea44f?style=flat&logo=github)](https://github.com/kurtvalcorza/kokoro-tts-pipeline)
 
 > [!WARNING]
 > ⚠️ **Provided for research, training, and evaluation purposes only.** Model weights are redistributed unmodified under their upstream license, which controls your use, including any commercial use or redistribution; the accompanying code and notebooks are released under this repository's license. All of it is supplied **"as is"**, without warranty of any kind, and has not been validated for production, clinical, or safety-critical use. Running the notebooks downloads third-party weights and datasets governed by their own licenses and consumes compute on your own Colab/Kaggle account. To the maximum extent permitted by law, the maintainers of this repository and the DIMER platform accept no liability for any damages arising from their use. Hosting implies no affiliation with or endorsement by the original authors.
@@ -28,7 +29,7 @@ This pipeline provides a ready-to-run interactive Google Colab notebook that exe
 
 ---
 
-###### Description
+#### Description
 
 `hexgrad/Kokoro-82M` v1.0 is an 82 M-parameter open-weight text-to-speech model published 2025-01-27 (upstream README "Releases"), pinned here to revision `f3ff3571791e39611d31c381e3a41a3af07b4987`. Architecturally it is a StyleTTS 2 decoder (Li et al., arXiv:2306.07691) with an ISTFTNet vocoder (Kaneko et al., arXiv:2203.02395), "decoder only: no diffusion, no encoder release" (upstream "Model Facts"): a PL-BERT text encoder (12 layers, hidden 768, `config.json` `plbert`) and a 3-layer prosody predictor read a phoneme string plus a 128-d style vector, predict per-phoneme durations (`max_dur` 50), F0 and energy, and the ISTFTNet generator (upsample rates 10×6, 20-point iSTFT) renders a 24 kHz mono waveform in one pass. The style vector is not learned at inference: it is read from one of 54 pre-computed voice packs (`voices/*.pt`, 178-token vocabulary) and selected by phoneme count, so adaptation is by voice-pack selection only — no training, cloning or in-context conditioning happens in this repository. Grapheme-to-phoneme conversion is done by the `misaki` library (a dictionary G2P for English with an espeak-ng fallback). What this repository adds is packaging: `KokoroTTSPipeline` in `src/kokoro_tts_pipeline/pipeline.py`, digest verification of the checkpoint and all 54 voice packs (`verify_snapshot`, `stage_missing_files`), input validation, a fixed output contract and a CPU smoke run; it exposes no quality metric because none can be computed without external judges.
 
