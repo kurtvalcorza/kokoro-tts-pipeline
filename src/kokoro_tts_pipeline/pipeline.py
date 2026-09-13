@@ -260,9 +260,6 @@ class KokoroTTSPipeline:
         allow_download: bool = False,
         lang_code: str = DEFAULT_LANG_CODE,
     ) -> KokoroTTSPipeline:
-        import torch
-        from kokoro import KModel, KPipeline
-
         if lang_code not in LANG_CODES:
             raise ValueError(f"lang_code must be one of LANG_CODES {LANG_CODES}, got {lang_code!r}")
         root = Path(weights_dir or DEFAULT_WEIGHTS_DIR)
@@ -273,6 +270,10 @@ class KokoroTTSPipeline:
             )
         stage_missing_files(root, allow_download=allow_download)
         manifest = verify_snapshot(root)
+        # Validate language and verify the snapshot before importing model libraries.
+        import torch
+        from kokoro import KModel, KPipeline
+
         resolved_device = device or ("cuda:0" if torch.cuda.is_available() else "cpu")
         kmodel = KModel(repo_id=MODEL_ID, config=str(root / CONFIG_FILE), model=str(root / WEIGHTS_FILE))
         kmodel = kmodel.to(resolved_device).eval()

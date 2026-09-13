@@ -121,3 +121,5 @@ The native hosted kernel was Python 3.13.15; its direct notebook attempt was abo
 ## Current status
 
 Clean GPU execution evidence is now recorded for the exact notebook blob above. The registry status remains **Candidate** pending a reviewer’s acceptance of the evidence and an integrator’s promotion. This documentation change performs no promotion. The run is default-sample inference/contract evidence; it does not establish model quality or a benchmark result. Kokoro listening review is still pending; WAV structure and digest were checked, but audible intelligibility and perceptual quality were not assessed.
+
+Current source update: snapshot validation now runs before model-library imports (Kokoro also validates the language first), so rejected requests fail with the intended validation error even when model libraries are absent. The standalone notebook was regenerated from this source. The retained 2026-09-13 GPU run identifies the earlier notebook blob; the regenerated notebook has not had a fresh GPU execution. Status remains **Candidate**.
