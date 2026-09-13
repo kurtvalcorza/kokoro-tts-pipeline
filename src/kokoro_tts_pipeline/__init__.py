@@ -2,6 +2,7 @@ from .pipeline import (
     DEFAULT_LANG_CODE,
     DEFAULT_VOICE,
     DEFAULT_WEIGHTS_DIR,
+    INPUT_SCHEMA,
     LANG_CODES,
     LOADER_WEIGHTS_ONLY,
     MAX_SPEED,
@@ -14,8 +15,10 @@ from .pipeline import (
     SAMPLE_RATE,
     WEIGHT_FORMAT,
     KokoroTTSPipeline,
+    evaluation_report,
     list_voices,
     stage_missing_files,
+    validate_inputs,
     verify_snapshot,
 )
 
@@ -23,6 +26,7 @@ __all__ = [
     "DEFAULT_LANG_CODE",
     "DEFAULT_VOICE",
     "DEFAULT_WEIGHTS_DIR",
+    "INPUT_SCHEMA",
     "LANG_CODES",
     "LOADER_WEIGHTS_ONLY",
     "MAX_SPEED",
@@ -35,7 +39,9 @@ __all__ = [
     "SAMPLE_RATE",
     "WEIGHT_FORMAT",
     "KokoroTTSPipeline",
+    "evaluation_report",
     "list_voices",
     "stage_missing_files",
+    "validate_inputs",
     "verify_snapshot",
 ]

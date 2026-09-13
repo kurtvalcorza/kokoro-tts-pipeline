@@ -2,15 +2,15 @@
 
 The checkpoint ``kokoro-v1_0.pth`` and every ``voices/*.pt`` pack are PyTorch pickle files, not SafeTensors.
 The trust boundary is therefore: (1) every file is SHA-256-verified against the manifest before it is opened,
-and (2) the ``kokoro`` library deserialises both with ``torch.load(..., weights_only=True)`` (recorded in
-``LOADER_WEIGHTS_ONLY``), which restricts unpickling to tensors and primitive containers.
+and (2) the ``kokoro`` library deserialises both with ``torch.load`` under ``weights_only=True`` (recorded
+in ``LOADER_WEIGHTS_ONLY``), which restricts unpickling to tensors and primitive containers.
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -120,6 +120,126 @@ def list_voices(manifest: dict[str, Any]) -> tuple[str, ...]:
     return tuple(sorted(name[len(prefix) : -3] for name in names))
 
 
+INPUT_SCHEMA: dict[str, Any] = {
+    "input": "one non-empty str, spoken verbatim; newline-split into segments by the library",
+    "text_chars": [1, MAX_TEXT_CHARS],
+    "speed": [MIN_SPEED, MAX_SPEED],
+    "voice": (
+        "one of the manifest voices/*.pt packs whose first letter equals the instance "
+        f"lang_code ({DEFAULT_LANG_CODE} by default)"
+    ),
+    "lang_codes": list(LANG_CODES),
+    "sample_rate_hz": SAMPLE_RATE,
+    "preprocessing": (
+        "grapheme-to-phoneme through misaki (espeak-ng fallback for out-of-dictionary words when it "
+        "binds on the host), a 128-d style vector read from the voice pack by phoneme count, and a "
+        "510-phoneme cap per segment applied inside the library"
+    ),
+}
+
+
+def _check_inputs(text: Any, voice: Any, speed: Any, voices: Sequence[str], lang_code: str) -> None:
+    """Raise TypeError/ValueError naming the first violated ceiling; return nothing."""
+    if not isinstance(text, str):
+        raise TypeError("text must be a str")
+    if not text.strip():
+        raise ValueError("text must not be empty")
+    if len(text) > MAX_TEXT_CHARS:
+        raise ValueError(f"text exceeds MAX_TEXT_CHARS={MAX_TEXT_CHARS}: {len(text)}")
+    if not isinstance(voice, str) or voice not in voices:
+        raise ValueError(f"voice must be one of the {len(voices)} manifest voices, got {voice!r}")
+    if voice[0] != lang_code:
+        raise ValueError(f"voice {voice!r} is not a lang_code={lang_code!r} voice")
+    if isinstance(speed, bool) or not isinstance(speed, int | float):
+        raise TypeError("speed must be a number")
+    if not MIN_SPEED <= speed <= MAX_SPEED:
+        raise ValueError(f"speed must be between MIN_SPEED={MIN_SPEED} and MAX_SPEED={MAX_SPEED}")
+
+
+def validate_inputs(
+    text: str,
+    voice: str = DEFAULT_VOICE,
+    *,
+    speed: float = 1.0,
+    voices: Sequence[str],
+    lang_code: str = DEFAULT_LANG_CODE,
+    names: Sequence[str] | None = None,
+) -> dict[str, Any]:
+    """Validation stage: return the input manifest (schema, per-input observations, verdict).
+
+    ``voices`` is the instance's authoritative voice inventory — ``pipe.voices``, which
+    ``list_voices`` derives from the digest-verified manifest — and is required because voice
+    membership cannot be checked without it. Rejection is reported by raising exactly as
+    ``synthesize`` would: both route through ``_check_inputs``.
+    """
+    _check_inputs(text, voice, speed, voices, lang_code)
+    if names is not None and len(names) != 1:
+        raise ValueError("names must have exactly one entry: synthesize takes one text per call")
+    lines = [line for line in text.splitlines() if line.strip()]
+    return {
+        "schema": dict(INPUT_SCHEMA),
+        "inputs": [
+            {
+                "id": names[0] if names else "text-0",
+                "chars": len(text),
+                "segments": len(lines) or 1,
+            }
+        ],
+        "voice": voice,
+        "speed": float(speed),
+        "lang_code": lang_code,
+        "voice_inventory": len(voices),
+        "verdict": "accepted",
+        "findings": [],
+        "model_id": MODEL_ID,
+        "model_revision": MODEL_REVISION,
+    }
+
+
+def evaluation_report(
+    result: Mapping[str, Any], references: Sequence[Any] | None = None, *, sample_kind: str = "synthetic"
+) -> dict[str, Any]:
+    """Evaluation stage: a machine-readable report even though no metric exists here.
+
+    Speech quality has no intrinsic metric and the repository ships no metric helper, so the
+    verdict is always ``not-measurable`` (EVAL9). ``references`` exists for interface parity with
+    the fleet's other pipelines and is recorded in ``reason`` rather than scored: a reference
+    recording cannot be compared to a synthesised waveform sample-by-sample, and both of the real
+    judges (listener MOS, ASR word error rate) live outside this repository.
+    """
+    supplied = references is not None
+    return {
+        "task": f"text-to-speech synthesis ({SAMPLE_RATE} Hz mono float32, named synthetic voice pack)",
+        "score_semantics": (
+            "the output is a waveform, not a prediction: duration, peak amplitude and the phoneme "
+            "string are run-level facts, not quality scores, and none of them bounds naturalness "
+            "or intelligibility"
+        ),
+        "sample_kind": sample_kind,
+        "n_segments": len(result.get("segments", [])),
+        "duration_s": float(result.get("duration_s", 0.0)),
+        "metrics": [],
+        "baselines": [],
+        "verdict": "not-measurable",
+        "reason": (
+            "speech quality has no ground truth in this repository and no metric helper is shipped"
+            + (
+                "; references were supplied but no metric helper exists to score them here"
+                if supplied
+                else "; the evaluated sample has no reference recording"
+            )
+        ),
+        "needs": (
+            "an external judge: Mean Opinion Score ratings from human listeners for naturalness, or "
+            "an independent speech recogniser to re-transcribe the waveform and compute word error "
+            "rate against the input text for intelligibility — over a reference sentence set, with "
+            "the judge named"
+        ),
+        "model_id": MODEL_ID,
+        "model_revision": MODEL_REVISION,
+    }
+
+
 @dataclass
 class KokoroTTSPipeline:
     """``_runner(text, voice_path, speed)`` yields ``(graphemes, phonemes, audio_1d_float32)`` per segment."""
@@ -172,20 +292,7 @@ class KokoroTTSPipeline:
         )
 
     def _validate(self, text: Any, voice: Any, speed: Any) -> None:
-        if not isinstance(text, str):
-            raise TypeError("text must be a str")
-        if not text.strip():
-            raise ValueError("text must not be empty")
-        if len(text) > MAX_TEXT_CHARS:
-            raise ValueError(f"text exceeds MAX_TEXT_CHARS={MAX_TEXT_CHARS}: {len(text)}")
-        if not isinstance(voice, str) or voice not in self.voices:
-            raise ValueError(f"voice must be one of the {len(self.voices)} manifest voices, got {voice!r}")
-        if voice[0] != self.lang_code:
-            raise ValueError(f"voice {voice!r} is not a lang_code={self.lang_code!r} voice")
-        if isinstance(speed, bool) or not isinstance(speed, int | float):
-            raise TypeError("speed must be a number")
-        if not MIN_SPEED <= speed <= MAX_SPEED:
-            raise ValueError(f"speed must be between MIN_SPEED={MIN_SPEED} and MAX_SPEED={MAX_SPEED}")
+        _check_inputs(text, voice, speed, self.voices, self.lang_code)
 
     def synthesize(self, text: str, voice: str = DEFAULT_VOICE, *, speed: float = 1.0) -> dict[str, Any]:
         """Synthesise ``text`` with a named voice pack; ``audio`` is a 1-D float32 array at 24 kHz."""
