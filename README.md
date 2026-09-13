@@ -57,7 +57,7 @@ Measured on CPU (float32, Windows venv, 2026-09-12): load 6.22 s, 3.25 s of audi
 
 ## Release status
 
-**Candidate.** Static/unit checks do not constitute clean-runtime notebook evidence. Complete `docs/release-verification.md` against the exact release revision before calling the notebook release-grade.
+**Candidate.** The default standalone notebook passed 8/8 unchanged code cells on a Colab Tesla T4 in an isolated Python 3.12 runtime on 2026-09-13. [Recorded GPU evidence](docs/release-verification.md) includes the exact notebook blob, exports and execution log. Release promotion awaits evidence review and Kokoro listening review; these sample execution checks do not measure general model quality.
 
 ## Documents
 

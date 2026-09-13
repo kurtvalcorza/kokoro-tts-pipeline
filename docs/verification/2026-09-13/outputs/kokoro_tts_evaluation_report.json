@@ -1,0 +1,14 @@
+{
+  "task": "text-to-speech synthesis (24000 Hz mono float32, named synthetic voice pack)",
+  "score_semantics": "the output is a waveform, not a prediction: duration, peak amplitude and the phoneme string are run-level facts, not quality scores, and none of them bounds naturalness or intelligibility",
+  "sample_kind": "synthetic (authored in this cell; the model card smoke sentence)",
+  "n_segments": 1,
+  "duration_s": 3.25,
+  "metrics": [],
+  "baselines": [],
+  "verdict": "not-measurable",
+  "reason": "speech quality has no ground truth in this repository and no metric helper is shipped; the evaluated sample has no reference recording",
+  "needs": "an external judge: Mean Opinion Score ratings from human listeners for naturalness, or an independent speech recogniser to re-transcribe the waveform and compute word error rate against the input text for intelligibility — over a reference sentence set, with the judge named",
+  "model_id": "hexgrad/Kokoro-82M",
+  "model_revision": "f3ff3571791e39611d31c381e3a41a3af07b4987"
+}

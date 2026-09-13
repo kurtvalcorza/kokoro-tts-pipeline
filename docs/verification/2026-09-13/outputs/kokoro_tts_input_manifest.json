@@ -1,0 +1,48 @@
+{
+  "schema": {
+    "input": "one non-empty str, spoken verbatim; newline-split into segments by the library",
+    "text_chars": [
+      1,
+      2000
+    ],
+    "speed": [
+      0.5,
+      2.0
+    ],
+    "voice": "one of the manifest voices/*.pt packs whose first letter equals the instance lang_code (a by default)",
+    "lang_codes": [
+      "a",
+      "b",
+      "e",
+      "f",
+      "h",
+      "i",
+      "j",
+      "p",
+      "z"
+    ],
+    "sample_rate_hz": 24000,
+    "preprocessing": "grapheme-to-phoneme through misaki (espeak-ng fallback for out-of-dictionary words when it binds on the host), a 128-d style vector read from the voice pack by phoneme count, and a 510-phoneme cap per segment applied inside the library"
+  },
+  "inputs": [
+    {
+      "id": "synthetic_pangram",
+      "chars": 44,
+      "segments": 1
+    }
+  ],
+  "voice": "af_heart",
+  "speed": 1.0,
+  "lang_code": "a",
+  "voice_inventory": 54,
+  "verdict": "accepted",
+  "findings": [
+    {
+      "input": "wrong-language-voice-probe",
+      "verdict": "rejected",
+      "message": "voice 'bf_emma' is not a lang_code='a' voice"
+    }
+  ],
+  "model_id": "hexgrad/Kokoro-82M",
+  "model_revision": "f3ff3571791e39611d31c381e3a41a3af07b4987"
+}
