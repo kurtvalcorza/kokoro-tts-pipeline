@@ -7,7 +7,7 @@ date_published: "2024-12-26"
 date_published_source: "Hugging Face Hub repository creation date of the exact hosted checkpoint (`createdAt`, https://huggingface.co/api/models/hexgrad/Kokoro-82M)"
 ---
 
-# Kokoro-82M v1.0 (DIMER package v0.1.0) — Text-to-Speech Model (Speech Synthesis)
+# Kokoro-82M v1.0 — Text-to-Speech Model (Speech Synthesis)
 
 [![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-hexgrad%2FKokoro--82M-ffcc4d?style=flat)](https://huggingface.co/hexgrad/Kokoro-82M)
 [![Upstream GitHub](https://img.shields.io/badge/Upstream%20GitHub-hexgrad%2Fkokoro-181717?style=flat&logo=github&logoColor=white)](https://github.com/hexgrad/kokoro)
