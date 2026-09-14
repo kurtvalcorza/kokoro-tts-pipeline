@@ -2,6 +2,7 @@
 license: apache-2.0
 model_card_spec: "1.1"
 pipeline_tag: text-to-speech
+task: "Others - Speech Synthesis"
 base_model: hexgrad/Kokoro-82M
 date_published: "2024-12-26"
 date_published_source: "Hugging Face Hub repository creation date of the exact hosted checkpoint (`createdAt`, https://huggingface.co/api/models/hexgrad/Kokoro-82M)"
