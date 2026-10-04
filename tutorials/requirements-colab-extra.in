@@ -1,0 +1,5 @@
+# Extra inputs for tutorials/requirements-colab.lock.txt (see the compile command in tools/notebook_template.py).
+# misaki 0.9.4 loads the spaCy model en_core_web_sm and, when it is not installed, calls spacy.cli.download, which
+# runs `python -m pip install` at runtime. The isolated uv environment has no pip, and an unpinned runtime download
+# is not hash-checked, so the model wheel is locked here instead (spacy 3.8.x accepts en_core_web_sm 3.8.0).
+en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
