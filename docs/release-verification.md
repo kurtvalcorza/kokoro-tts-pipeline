@@ -16,7 +16,7 @@ CI runs `tools/validate_release_assets.py`, which checks:
   path; exactly one cell tagged `embedded_module` equal to `src/kokoro_tts_pipeline/pipeline.py` after the
   generator's documented rewrites; the inline `MANIFEST` equal to the committed 58-entry snapshot manifest and the
   inline `PINS` equal to the `pyproject.toml` runtime pins; the notebook byte-identical to `tools/build_notebook.py`
-  output; the pinned-install cell with its restart-on-stale-import guard; `NOTEBOOK_SOURCE` recorded in exports;
+  output; exactly one kernel cell, which builds (or reuses) the hash-locked isolated environment from `tutorials/requirements-colab.lock.txt` and routes every later cell to it, with no in-kernel `pip install` and no restart request; `NOTEBOOK_SOURCE` recorded in exports;
 - `MODEL_ID`/`MODEL_REVISION` are bound only in the carried module cell (and repeated in the inline manifest,
   which the notebook asserts against the module before fetching), the revision is
   a 40-hex immutable commit, and the same identity string appears in `README.md`,
@@ -45,7 +45,7 @@ weights). These are source/provenance and unit checks. They are **not** executio
 | Path | Runtime | Role |
 |---|---|---|
 | Google Colab (supported user path) | Colab CPU runtime (CUDA used automatically when present; float32 either way) | The runtime the tutorial is written for; a clean top-to-bottom run here is promotion evidence |
-| Kaggle CLI kernel or equivalent fresh container | Fresh CPU or GPU container, Python 3.12 image; the committed notebook executed verbatim, cell by cell, in a fresh interpreter with a `google.colab` shim and **no repository checkout** (the notebook is standalone) | Reproducible clean-room executor of the same class; needed whenever the hosted kernel pre-imports a NumPy or Pillow that differs from the `pyproject.toml` pins, because the tutorial's fail-closed stale-import guard correctly halts the in-kernel path after the pinned install |
+| Kaggle CLI kernel or equivalent fresh container | Fresh CPU or GPU container, Python 3.12 image; the committed notebook executed verbatim, cell by cell, in a fresh interpreter with a `google.colab` shim and **no repository checkout** (the notebook is standalone) | Reproducible clean-room executor of the same class; the notebook no longer installs into the kernel (Section 1 builds an isolated hash-locked environment, so a hosted kernel's pre-imported packages do not matter); an executor that pre-installs exactly the pins may set `DIMER_NOTEBOOK_CI_PREINSTALLED=1` |
 | Local harness (pre-flight only) | Workstation, sequential cell executor with a `google.colab` shim, empty model cache, no pre-staged files under `weights/kokoro-82m/` beyond the committed ones | Builder pre-flight to catch defects before spending cloud runs; **not** a supported runtime and not promotion evidence |
 
 ## Supported release verification procedure
