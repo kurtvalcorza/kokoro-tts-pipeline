@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -35,6 +36,8 @@ LANG_CODES = ("a", "b", "e", "f", "h", "i", "j", "p", "z")  # kokoro.pipeline.LA
 DEFAULT_LANG_CODE = "a"  # American English
 DEFAULT_VOICE = "af_heart"
 MAX_TEXT_CHARS = 2000  # characters per synthesize() call; the library chunks at 510 phonemes per segment
+SPLIT_PATTERN = r"\n+"  # the library splits the text into lines on this pattern before phonemising each line
+MAX_SEGMENT_PHONEMES = 510  # a line whose phonemes exceed this is split by the library into several chunks
 MIN_SPEED = 0.5
 MAX_SPEED = 2.0
 
@@ -132,10 +135,30 @@ INPUT_SCHEMA: dict[str, Any] = {
     "sample_rate_hz": SAMPLE_RATE,
     "preprocessing": (
         "grapheme-to-phoneme through misaki (espeak-ng fallback for out-of-dictionary words when it "
-        "binds on the host), a 128-d style vector read from the voice pack by phoneme count, and a "
-        "510-phoneme cap per segment applied inside the library"
+        "binds on the host), a 128-d style vector read from the voice pack by phoneme count; inside the "
+        f"library a line above {MAX_SEGMENT_PHONEMES} phonemes is split into several chunks and a line that "
+        "phonemises to nothing is skipped"
     ),
 }
+
+
+def text_lines(text: str) -> list[str]:
+    """The lines the library synthesises, split as it splits them (``SPLIT_PATTERN`` on the stripped text).
+
+    A line's position in this list is the ``line`` index reported for every chunk of audio it produced."""
+    return re.split(SPLIT_PATTERN, text.strip())
+
+
+def decode_byod_text(payload: bytes, name: str) -> str:
+    """Decode an uploaded BYOD text file (BOM dropped, line endings normalised to ``\\n``, outer whitespace
+    stripped); refuse a file that is not UTF-8 with a message naming the remedy."""
+    try:
+        return payload.decode("utf-8-sig").replace("\r\n", "\n").replace("\r", "\n").strip()
+    except UnicodeDecodeError as exc:
+        raise ValueError(
+            f"{name} is not UTF-8 text (undecodable byte at position {exc.start}): save it as UTF-8 "
+            "(in most editors: Save as -> Encoding: UTF-8) and run this cell again"
+        ) from None
 
 
 def _check_inputs(text: Any, voice: Any, speed: Any, voices: Sequence[str], lang_code: str) -> None:
@@ -175,7 +198,7 @@ def validate_inputs(
     _check_inputs(text, voice, speed, voices, lang_code)
     if names is not None and len(names) != 1:
         raise ValueError("names must have exactly one entry: synthesize takes one text per call")
-    lines = [line for line in text.splitlines() if line.strip()]
+    lines = [line for line in text_lines(text) if line.strip()]
     return {
         "schema": dict(INPUT_SCHEMA),
         "inputs": [
@@ -242,7 +265,10 @@ def evaluation_report(
 
 @dataclass
 class KokoroTTSPipeline:
-    """``_runner(text, voice_path, speed)`` yields ``(graphemes, phonemes, audio_1d_float32)`` per segment."""
+    """``_runner(text, voice_path, speed)`` yields ``(graphemes, phonemes, audio_1d[, line])`` per chunk.
+
+    ``line`` is the index into ``text_lines(text)`` of the line the chunk came from; a runner that omits it
+    (a 3-tuple) leaves line coverage unknown (``skipped_lines`` is then ``None``)."""
 
     _runner: Callable[..., Any]
     voices: tuple[str, ...]
@@ -282,10 +308,10 @@ class KokoroTTSPipeline:
 
         def runner(text: str, voice_path: str, speed: float) -> Any:
             with torch.inference_mode():
-                for result in kpipeline(text, voice=voice_path, speed=speed, split_pattern=r"\n+"):
+                for result in kpipeline(text, voice=voice_path, speed=speed, split_pattern=SPLIT_PATTERN):
                     audio = result.audio
                     array = audio.cpu().numpy() if audio is not None else None
-                    yield result.graphemes, result.phonemes, array
+                    yield result.graphemes, result.phonemes, array, result.text_index
 
         return cls(
             runner, list_voices(manifest), lang_code, resolved_device, "local-snapshot", root,
@@ -300,15 +326,32 @@ class KokoroTTSPipeline:
         self._validate(text, voice, speed)
         voice_path = str(self.weights_dir / VOICES_DIR / f"{voice}.pt")
         chunks: list[np.ndarray] = []
-        segments: list[dict[str, str]] = []
-        for graphemes, phonemes, audio in self._runner(text, voice_path, float(speed)):
+        segments: list[dict[str, Any]] = []
+        line_known = True
+        for item in self._runner(text, voice_path, float(speed)):
+            graphemes, phonemes, audio = item[:3]
+            line = item[3] if len(item) > 3 else None
             if audio is None:
                 continue
             array = np.asarray(audio, dtype=np.float32).reshape(-1)
             chunks.append(array)
-            segments.append({"graphemes": str(graphemes), "phonemes": str(phonemes)})
+            line_known = line_known and line is not None
+            segments.append({"graphemes": str(graphemes), "phonemes": str(phonemes), "line": line})
         if not chunks:
-            raise RuntimeError("no audio produced: every segment was empty after grapheme-to-phoneme")
+            raise RuntimeError(
+                "no audio produced: every line phonemised to nothing (words outside the dictionary are "
+                "dropped when the espeak-ng fallback is not available); use dictionary words"
+            )
+        # A long line yields several chunks; a line that phonemises to nothing yields none: report it.
+        lines = text_lines(text)
+        voiced = {segment["line"] for segment in segments}
+        skipped = None
+        if line_known:
+            skipped = [
+                {"line": i, "text": part.strip()[:80]}
+                for i, part in enumerate(lines)
+                if part.strip() and i not in voiced
+            ]
         wave = np.concatenate(chunks)
         return {
             "audio": wave,
@@ -317,6 +360,8 @@ class KokoroTTSPipeline:
             "duration_s": float(wave.shape[0] / SAMPLE_RATE),
             "peak_amplitude": float(np.abs(wave).max()),
             "segments": segments,
+            "lines": sum(1 for part in lines if part.strip()),
+            "skipped_lines": skipped,
             "voice": voice,
             "lang_code": self.lang_code,
             "speed": float(speed),

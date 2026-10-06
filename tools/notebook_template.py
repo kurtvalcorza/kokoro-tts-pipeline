@@ -1,4 +1,4 @@
-"""Per-repository template for tools/build_notebook.py (NOTEBOOK_SPEC 1.1 §3.6 standalone carrier).
+"""Per-repository template for tools/build_notebook.py (NOTEBOOK_SPEC 2.2 §4 standalone carrier, generator /2.1).
 
 Only the task-specific prose and stage cells live here. Runtime install, the embedded pipeline
 module, and the model pin/stage/verify cells are produced by the generator from repository
@@ -15,6 +15,48 @@ TEMPLATE = {
     "pipeline_class": "KokoroTTSPipeline",
     "weights_key": "kokoro-82m",
     "runtime_imports": ["torch", "kokoro", "misaki", "soundfile"],
+    "mode": "GUIDED",
+    "isolated_runtime": True,
+    # KTT-B1 / KTT-M1: the fleet's uv isolated-environment mechanism (ast-audio-classification-pipeline / bioclip2-biodiversity-pipeline;
+    # generator /2.1 = gliner-ner-pipeline fe3d5ba tools/build_notebook.py byte for byte). kokoro 0.9.4 and misaki 0.9.4 declare
+    # Requires-Python <3.13, so they cannot be installed into Colab's Python 3.13 kernel; the managed CPython 3.12.12 environment
+    # does not depend on the kernel's Python. The lock is compiled with
+    # `uv pip compile pyproject.toml tutorials/requirements-colab-extra.in -c <versions of ast-audio-classification-pipeline's
+    # T4-passed tutorials/requirements-colab.lock.txt @ 16eee39> --python-version 3.12 --python-platform x86_64-manylinux_2_28
+    # --generate-hashes --only-binary :all: -o tutorials/requirements-colab.lock.txt`: ast's 47 packages at the same versions plus
+    # kokoro/misaki and their spaCy/phonemizer stack (65 more). Two consequences of the lock, stated to the learner:
+    # (1) `--only-binary :all:` resolves num2words to 0.5.6, the newest release whose dependencies are all wheels (0.5.8-0.5.14
+    # require docopt, which is published only as an sdist); (2) the spaCy model en_core_web_sm 3.8.0, which misaki would otherwise
+    # pip-install at run time (the uv environment has no pip), is locked by URL and SHA-256 from the extra input file.
+    # No system package is needed: the espeakng-loader wheel bundles libespeak-ng and its data.
+    "managed_python": "3.12.12",
+    "uv": {
+        "version": "0.12.15",
+        "url": "https://files.pythonhosted.org/packages/1e/fd/432451d732917c49152a291de3ef171aa6b0f1a22d39780fb2c1f085ca4c/uv-0.12.15-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+        "bytes": 20081404,
+        "sha256": "aee9802f46bae436bd91751bb33ddeb379ef1596b5c19df193219d545d244b60",
+    },
+    "lock": "tutorials/requirements-colab.lock.txt",
+    "run_all": (
+        "Selecting **Run all** in a fresh supported runtime builds an isolated Python 3.12.12 environment from the "
+        "hash-locked pins (the kernel's own packages and its Python version are left alone, so no restart is needed and a "
+        "Python 3.13 kernel such as Colab's works), stages and digest-verifies the pinned 58-file snapshot, authors the "
+        "one-sentence synthetic sample in code, validates it into an input manifest before the model runs, synthesises one "
+        "24 kHz WAV with a fixed seed, writes the evaluation report, and exports machine-readable outputs with provenance. "
+        "The default path needs no repository clone, no DIMER worker or service, no credential, no upload dialog and no "
+        "configuration edit (NOTEBOOK_SPEC 2.2 §5). Building the isolated environment takes a few minutes on top of the "
+        "seconds the synthesis itself needs."
+    ),
+    "byod": (
+        "After the sample workflow completes, set `USE_BYOD = True` in Section 4, select that cell and choose **Runtime → "
+        "Run after** (it re-runs Section 4 and every later cell). Supply one UTF-8 `.txt` file of at most `MAX_TEXT_CHARS` "
+        "(2,000) characters through the upload dialog on Colab, or by path in `BYOD_PATH` on any runtime (a path, when set, "
+        "is used instead of the dialog). It passes through the same notebook-local validation, synthesis, evaluation-report "
+        "and export cells as the sample. Long lines are split by the library into several chunks, and a line that produces "
+        "no audio is named in a warning in Section 6. The expected input and the privacy guidance are stated in the "
+        "Prerequisites and in Section 4, and the file stays inside this runtime. BYOD is optional and never part of the "
+        "default path."
+    ),
     "title": "Kokoro-82M — DIMER text-to-speech tutorial (standalone)",
     "badges": [
         (
@@ -77,10 +119,11 @@ TEMPLATE = {
         "The repository exposes none of these."
     ),
     "prerequisites": [
-        "- **Runtime:** a fresh supported runtime (Google Colab or Jupyter, Python 3.12). The default path runs on CPU (float32) and uses CUDA automatically when available (also float32; the pipeline does not change precision by device). The model card's CPU smoke loaded and verified the 58-file snapshot in 6.22 s and rendered 3.25 s of audio in 0.72 s, so the one-sentence default runs in seconds on a hosted CPU runtime. The pinned `torch==2.14.0` install and the 355 MB snapshot (327 MB checkpoint plus 54 voice packs) are the largest downloads of the run.",
+        "- **Runtime:** a fresh **Linux x86_64** runtime — Google Colab, Kaggle or Linux Jupyter. The pinned `kokoro` 0.9.4 and `misaki` 0.9.4 support only Python 3.10–3.12, and Colab's kernel runs Python 3.13, so Section 1 does not install them into the kernel: it builds its own Python 3.12.12 environment from a hash-locked list of manylinux wheels, and the kernel's own Python version does not matter. A Windows or macOS kernel is not supported (Section 1 stops with that message). The default path runs on CPU (float32) and uses CUDA automatically when available (also float32; the pipeline does not change precision by device). The model card's CPU smoke loaded and verified the 58-file snapshot in 6.22 s and rendered 3.25 s of audio in 0.72 s, so the one-sentence default runs in seconds once the environment exists. The locked install (PyTorch 2.14.0 with its CUDA libraries, a few GB) and the 355 MB snapshot (327 MB checkpoint plus 54 voice packs) are the largest downloads of the run.",
+        "- **Expected warnings:** the first import of `num2words` 0.5.6 (the newest release the wheel-only lock can use; `misaki` uses it to spell out numbers) may print `SyntaxWarning: invalid escape sequence` lines from its Portuguese module; they do not affect English. Loading the model may print PyTorch warnings about LSTM `dropout` with one layer and the deprecated `weight_norm`; they come from the `kokoro` library and do not stop the run.",
         "- **Knowledge:** basic Python; what a phoneme string is; why a synthesised waveform has no ground truth to score against.",
-        "- **Data:** the default sample is one synthetic English sentence authored in code, so nothing is downloaded and no private data is needed. Optional BYOD upload is gated off by default so the sample path can run top-to-bottom without interaction. Expected BYOD input: one UTF-8 text file of at most 2,000 characters; the pipeline splits it on newlines and synthesises each line as a segment. Do not upload confidential or restricted data to a hosted notebook environment unless you are authorized to do so. Uploaded text remains in the notebook runtime; this pipeline does not send it to a third-party inference API. The text you submit will be spoken verbatim.",
-        "- **Dependency network call:** outside this package's control, the `misaki` G2P library downloads the spaCy `en_core_web_sm` model once on first English use.",
+        "- **Data:** the default sample is one synthetic English sentence authored in code, so nothing is downloaded and no private data is needed. Optional BYOD is gated off by default so the sample path can run top-to-bottom without interaction. Expected BYOD input: one UTF-8 `.txt` file of at most 2,000 characters, supplied with the Colab upload dialog or by path in `BYOD_PATH`; the library splits it on newlines, splits a line above 510 phonemes into several chunks, and skips a line that phonemises to nothing (Section 6 names any skipped line). Do not upload confidential or restricted data to a hosted notebook environment unless you are authorized to do so. Uploaded text remains in the notebook runtime; this pipeline does not send it to a third-party inference API. The text you submit will be spoken verbatim.",
+        "- **spaCy model:** the `misaki` G2P library needs the spaCy English model `en_core_web_sm` 3.8.0. It is part of the hash-locked environment, fetched once in Section 1 from its GitHub release (`github.com/explosion/spacy-models`, SHA-256 checked), so `misaki` does not download it while the notebook runs.",
     ],
     "cells": [
         {
@@ -93,26 +136,47 @@ TEMPLATE = {
                 "works, never a quality measurement and never benchmark evidence. The voice, the speed and the seed are "
                 "Colab form parameters so they can be changed without editing code; their allowed ranges are checked "
                 "against the carried module in Section 5.\n\n"
-                "BYOD is optional and disabled by default. Expected BYOD input: one UTF-8 text file of at most "
-                "`MAX_TEXT_CHARS` characters; the pipeline splits it on newlines and synthesises each line as a segment, "
-                "and the library truncates any single segment above 510 phonemes with a warning, so keep lines to a "
-                "sentence or two. The upload stays inside this runtime. Numbers, acronyms and names outside the "
-                "dictionary are pronounced by the espeak-ng fallback when it is available on the host and are otherwise "
-                "dropped — Section 6 shows how to check."
+                "BYOD is optional and disabled by default. Expected BYOD input: one UTF-8 `.txt` file of at most "
+                "`MAX_TEXT_CHARS` characters. On Colab, leave `BYOD_PATH` empty and an upload dialog opens; on any "
+                "runtime (Kaggle, Linux Jupyter, or Colab with a file already in `/content`), put the file's path in "
+                "`BYOD_PATH` instead. The library splits the text on newlines and synthesises each line: a line whose "
+                "phonemes exceed 510 is split into several chunks (at punctuation or word boundaries) that are "
+                "concatenated, and a line that phonemises to nothing produces no audio and is named in a warning in "
+                "Section 6. The file stays inside this runtime. Numbers are spelled out in words and all-capital "
+                "acronyms letter by letter; other words outside the dictionary are pronounced by the espeak-ng fallback "
+                "when it is available on the host and are otherwise dropped, and a line of symbols only (such as `***`) "
+                "always phonemises to nothing — Section 6 shows how to check. If the cell stops, its message says what to change: "
+                "no file uploaded, a file that is not UTF-8, or a `BYOD_PATH` that is not a file."
             ),
             "code": (
                 "import hashlib\n"
-                "import io\n\n"
+                "from pathlib import Path\n\n"
                 "USE_BYOD = False  # @param {{type:\"boolean\"}}\n"
+                "BYOD_PATH = ''  # @param {{type:\"string\"}}\n"
                 "VOICE = 'af_heart'  # @param {{type:\"string\"}}\n"
                 "SPEED = 1.0  # @param {{type:\"number\"}}\n"
                 "SEED = 0  # @param {{type:\"integer\"}}\n\n"
                 "if USE_BYOD:\n"
-                "    from google.colab import files\n"
-                "    uploaded = files.upload()\n"
-                "    sample_name = next(iter(uploaded))\n"
-                "    text = io.TextIOWrapper(io.BytesIO(uploaded[sample_name]), encoding='utf-8').read().strip()\n"
-                "    sample_kind = 'BYOD upload'\n"
+                "    print({{'expected_byod_input': 'one UTF-8 .txt file', 'max_chars': MAX_TEXT_CHARS, 'source': 'BYOD_PATH' if BYOD_PATH else 'Colab upload dialog'}})\n"
+                "    if BYOD_PATH:\n"
+                "        byod_file = Path(BYOD_PATH)\n"
+                "        if not byod_file.is_file():\n"
+                "            raise FileNotFoundError(f'BYOD_PATH {{BYOD_PATH!r}} is not a file in this runtime: give the path of one UTF-8 .txt file and run this cell again')\n"
+                "        sample_name, payload = byod_file.name, byod_file.read_bytes()\n"
+                "        sample_kind = 'BYOD file (BYOD_PATH)'\n"
+                "    else:\n"
+                "        try:\n"
+                "            from google.colab import files\n"
+                "        except ImportError:\n"
+                "            raise RuntimeError('USE_BYOD = True needs a file: this runtime has no Colab upload dialog, so set BYOD_PATH to the path of one UTF-8 .txt file and run this cell again') from None\n"
+                "        uploaded = files.upload()\n"
+                "        if not uploaded:\n"
+                "            raise ValueError('no file uploaded; rerun this cell and choose one UTF-8 .txt file')\n"
+                "        if len(uploaded) != 1:\n"
+                "            raise ValueError(f'{{len(uploaded)}} files uploaded; rerun this cell and choose exactly one UTF-8 .txt file')\n"
+                "        sample_name, payload = next(iter(uploaded.items()))\n"
+                "        sample_kind = 'BYOD upload'\n"
+                "    text = decode_byod_text(payload, sample_name)\n"
                 "else:\n"
                 "    text = 'The quick brown fox jumps over the lazy dog.'\n"
                 "    sample_name = 'synthetic_pangram'\n"
@@ -137,9 +201,10 @@ TEMPLATE = {
                 "which `DEFAULT_LANG_CODE` (`a`, American English) is what this notebook loads, so a voice must start "
                 "with that letter (`af_…`/`am_…`) and a British `bf_…` voice is rejected by design rather than silently "
                 "mixed — the cell demonstrates exactly that rejection and records the pipeline's own error message as a "
-                "finding. `SAMPLE_RATE` is the fixed 24 kHz output rate. The notebook never trims or alters the text; the "
-                "library's 510-phoneme segment cap is applied inside the pipeline and is only visible afterwards through "
-                "the returned `phonemes`."
+                "finding. `SAMPLE_RATE` is the fixed 24 kHz output rate. The manifest's `segments` count is the number of "
+                "non-blank lines. The notebook never trims or alters the text; inside the library a line above 510 "
+                "phonemes is split into several chunks, which is only visible afterwards through the returned `segments` "
+                "and their `line` indices."
             ),
             "code": (
                 "import json\n\n"
@@ -161,35 +226,45 @@ TEMPLATE = {
             "md": (
                 "## 6. Synthesise, write the WAV, and read the output correctly\n\n"
                 "`synthesize(text, voice=…, speed=…)` returns `audio` (a 1-D float32 NumPy array at `sample_rate` 24000 "
-                "Hz), `num_samples`, `duration_s`, `peak_amplitude`, `segments` (one `graphemes`/`phonemes` pair per "
-                "newline-split segment), the `voice`, `lang_code` and `speed` used, `espeak_fallback`, the device, and "
-                "the model identity. **The output is not bit-deterministic by default:** the vocoder adds Gaussian noise "
+                "Hz), `num_samples`, `duration_s`, `peak_amplitude`, `segments` (one `graphemes`/`phonemes` chunk per "
+                "piece of audio, each with the `line` it came from: a short line gives one chunk, a line above 510 "
+                "phonemes several), `lines` (the number of non-blank lines) and `skipped_lines` (lines that phonemised to "
+                "nothing and produced no audio), the `voice`, `lang_code` and `speed` used, `espeak_fallback`, the device, "
+                "and the model identity. **The output is not bit-deterministic by default:** the vocoder adds Gaussian noise "
                 "and a random initial phase to its harmonic excitation, so two unseeded calls differ at the sample level "
                 "(the model card measured a maximum absolute difference of 0.093 between consecutive smoke calls of "
                 "identical length) while durations and phonemes stay the same; the pipeline sets no seed, so this cell "
                 "calls `torch.manual_seed(SEED)` immediately before synthesis — the card recorded bit-identical waveforms "
                 "across two seeded calls on the same host. Seeding does not make the audio identical across devices, "
                 "PyTorch builds or CPU kernels. The sanity checks below (right dtype, rate and shape, finite samples, "
-                "peak within full scale, one segment per line) are falsifiable plumbing checks, not a quality result, and "
+                "peak within full scale, every non-blank line either voiced or reported as skipped) are falsifiable "
+                "plumbing checks, not a quality result; a skipped line is printed as a warning naming the line, not "
+                "raised as an error, because it is a property of your text rather than of the pipeline, and "
                 "the model card's smoke observation (78,000 samples, 3.25 s, peak 0.342 on the same sentence, unseeded "
                 "CPU) is quoted as one measurement on that host, not an expected value. The `phonemes` string is the only "
-                "in-repository way to see whether the G2P dropped a word — with `espeak_fallback` `False`, "
-                "out-of-dictionary words vanish silently. The WAV written to `outputs/` is 16-bit PCM at 24 kHz via the "
-                "pinned `soundfile`; the inline player below appears only in an IPython front end."
+                "in-repository way to see whether the G2P dropped a word inside a line — with `espeak_fallback` `False`, "
+                "out-of-dictionary words vanish silently; a whole line that vanishes is reported in `skipped_lines`. The "
+                "WAV written to `outputs/` is 16-bit PCM at 24 kHz via the pinned `soundfile`, and an inline HTML audio "
+                "player for it appears below the printed facts in a notebook front end."
             ),
             "code": (
+                "import base64\n"
+                "import builtins\n"
                 "import time\n\n"
                 "torch.manual_seed(SEED)\n"
                 "started = time.perf_counter()\n"
                 "result = pipe.synthesize(text, voice=VOICE, speed=SPEED)\n"
                 "elapsed = time.perf_counter() - started\n"
                 "audio = result['audio']\n"
+                "lines_with_text = [i for i, part in enumerate(text_lines(text)) if part.strip()]\n"
+                "voiced_lines = sorted({{segment['line'] for segment in result['segments']}})\n"
+                "skipped_lines = result['skipped_lines'] or []\n"
                 "checks = {{\n"
                 "    'audio_is_float32_1d': isinstance(audio, np.ndarray) and audio.dtype == np.float32 and audio.ndim == 1,\n"
                 "    'sample_rate_matches_contract': result['sample_rate'] == SAMPLE_RATE,\n"
                 "    'all_samples_finite': bool(np.isfinite(audio).all()),\n"
                 "    'peak_within_full_scale': 0.0 < result['peak_amplitude'] <= 1.0,\n"
-                "    'one_segment_per_line': len(result['segments']) == len([line for line in text.splitlines() if line.strip()]),\n"
+                "    'every_line_voiced_or_reported': result['skipped_lines'] is not None and sorted(voiced_lines + [s['line'] for s in skipped_lines]) == lines_with_text,\n"
                 "    'duration_consistent': abs(result['duration_s'] - result['num_samples'] / SAMPLE_RATE) < 1e-6,\n"
                 "}}\n"
                 "if not all(checks.values()):\n"
@@ -199,15 +274,24 @@ TEMPLATE = {
                 "wav_sha256 = hashlib.sha256(Path(wav_path).read_bytes()).hexdigest()\n"
                 "print({{key: value for key, value in result.items() if key not in ('audio', 'segments')}})\n"
                 "print({{'seconds': round(elapsed, 3), 'audio_seconds_per_wall_second': round(result['duration_s'] / elapsed, 2), 'rms': round(float(np.sqrt(np.mean(np.square(audio)))), 4), 'checks': checks}})\n"
+                "print({{'lines': result['lines'], 'chunks': len(result['segments']), 'chunks_per_line': {{line: sum(1 for s in result['segments'] if s['line'] == line) for line in voiced_lines}}}})\n"
                 "for index, segment in enumerate(result['segments']):\n"
-                "    print(f\"segment {{index}}: graphemes={{segment['graphemes'][:80]!r}}\")\n"
-                "    print(f\"segment {{index}}: phonemes ={{segment['phonemes'][:80]!r}}\")\n"
-                "print({{'wav': wav_path, 'wav_sha256': wav_sha256, 'subtype': 'PCM_16'}})\n"
-                "try:\n"
-                "    from IPython.display import Audio, display\n"
-                "    display(Audio(audio, rate=result['sample_rate']))\n"
-                "except ImportError:\n"
-                "    print('inline player unavailable outside an IPython front end; open the WAV file instead')"
+                "    print(f\"chunk {{index}} (line {{segment['line']}}): graphemes={{segment['graphemes'][:80]!r}}\")\n"
+                "    print(f\"chunk {{index}} (line {{segment['line']}}): phonemes ={{segment['phonemes'][:80]!r}}\")\n"
+                "if skipped_lines:\n"
+                "    print(f'WARNING: {{len(skipped_lines)}} line(s) produced no audio because they phonemised to nothing (symbols only, or only words outside the dictionary with espeak_fallback={{result[\"espeak_fallback\"]}}); reword them with dictionary words: {{skipped_lines}}')\n"
+                "print({{'wav': wav_path, 'wav_sha256': wav_sha256, 'subtype': 'PCM_16'}})\n\n\n"
+                "class WavPlayer:\n"
+                "    \"\"\"An inline <audio> player for the WAV; it renders as HTML, so it also works from the isolated environment.\"\"\"\n\n"
+                "    def __init__(self, path):\n"
+                "        self.src = 'data:audio/wav;base64,' + base64.b64encode(Path(path).read_bytes()).decode('ascii')\n\n"
+                "    def _repr_html_(self):\n"
+                "        return f'<audio controls src=\"{{self.src}}\"></audio>'\n\n\n"
+                "show = globals().get('display') or getattr(builtins, 'display', None)\n"
+                "if callable(show):\n"
+                "    show(WavPlayer(wav_path))\n"
+                "else:\n"
+                "    print('no notebook front end to show an audio player; open the WAV file instead')"
             ),
         },
         {
@@ -240,7 +324,8 @@ TEMPLATE = {
                 "Three files are written under `outputs/` beside the input manifest: the WAV from Section 6, the "
                 "evaluation report from Section 7, and one JSON record with the WAV path and its SHA-256 (so the audio "
                 "can be tied to this record), the run-level facts (`num_samples`, `duration_s`, `peak_amplitude`, RMS, "
-                "wall time), the per-segment graphemes and phonemes, the request (`voice`, `lang_code`, `speed`, `seed`), "
+                "wall time), the per-chunk graphemes, phonemes and line indices, the line coverage (non-blank lines, "
+                "chunks, skipped lines), the request (`voice`, `lang_code`, `speed`, `seed`), "
                 "`espeak_fallback`, the sanity checks, the ceilings in force, the input manifest, the evaluation report, "
                 "the sample identity and text digest, the notebook's source (repository, revision, embedded module "
                 "digest, generator), the model identifier, the immutable model revision, the model licence, the weight "
@@ -253,6 +338,7 @@ TEMPLATE = {
                 "    'wav': {{'path': wav_path, 'sha256': wav_sha256, 'subtype': 'PCM_16', 'sample_rate': result['sample_rate']}},\n"
                 "    'audio': {{'num_samples': result['num_samples'], 'duration_s': result['duration_s'], 'peak_amplitude': result['peak_amplitude'], 'rms': float(np.sqrt(np.mean(np.square(audio))))}},\n"
                 "    'segments': result['segments'],\n"
+                "    'line_coverage': {{'lines': result['lines'], 'chunks': len(result['segments']), 'skipped_lines': result['skipped_lines']}},\n"
                 "    'request': {{'voice': result['voice'], 'lang_code': result['lang_code'], 'speed': result['speed'], 'seed': SEED}},\n"
                 "    'espeak_fallback': result['espeak_fallback'],\n"
                 "    'sanity_checks': checks,\n"
@@ -294,7 +380,8 @@ TEMPLATE = {
         "metric can be computed without an external judge, and a real evaluation needs MOS ratings from listeners or an "
         "ASR round-trip WER over a reference sentence set, with the judge named. The seed controls the vocoder noise on "
         "one host and build; it does not promise identical audio across devices. Out-of-dictionary words depend on the "
-        "espeak-ng fallback and are dropped when it is absent; segments above 510 phonemes are truncated by the library; "
+        "espeak-ng fallback and are dropped when it is absent, and a line made only of such words (or only of symbols) produces no audio and "
+        "is named in Section 6's warning; a line above 510 phonemes is split by the library into several chunks; "
         "non-English `lang_code`s and non-English quality are not exercised here; the pipeline exposes no cloning, "
         "mixing, timestamps or emotion control. The checkpoint and voice packs are pickles loaded through the "
         "weights-only loader after digest verification — an operator who bypasses `verify_snapshot` and loads an "
@@ -305,19 +392,25 @@ TEMPLATE = {
         "shown machine-readable outputs in the tested runtime — without the repository being reachable. It does **not** "
         "establish benchmark superiority, naturalness or intelligibility on any audience, safety for high-consequence "
         "read-outs, or production fitness on an unseen domain.\n\n"
-        "**Troubleshooting.** `RuntimeError: Core dependencies changed while older modules were loaded` in Section 1: "
-        "the pinned install replaced a package the runtime had pre-imported — restart the runtime and rerun from the "
-        "top. `FileNotFoundError: snapshot file missing` or a `sha256`/`size` `ValueError` in Section 3: a staged file is "
+        "**Troubleshooting.** `This notebook needs a Linux x86_64 runtime` in Section 1: open it in Google Colab, Kaggle "
+        "or Linux Jupyter; the locked environment is built from manylinux wheels. `The pinned uv wheel failed its "
+        "size/SHA-256 check` in Section 1: the download was cut short or altered — run the cell again. A pip/uv error "
+        "naming a hash in Section 1: a package download did not match the lock — run the cell again; if it repeats, "
+        "the network is altering downloads. `FileNotFoundError: snapshot file missing` or a `sha256`/`size` `ValueError` in Section 3: a staged file is "
         "incomplete or altered — delete it from `weights/{MODEL_KEY}/` (or the affected `voices/*.pt`) and rerun "
         "Section 3. A `ValueError` naming `MAX_TEXT_CHARS`, the speed range or the voice in Section 5: fix the form "
-        "parameter or shorten the BYOD file and rerun from Section 4. `espeak_fallback: False` in Section 3 with words "
-        "missing from the `phonemes` string in Section 6: the bundled espeak-ng library did not bind on this host — "
-        "restrict the text to dictionary words or install `espeak-ng` system-wide and reload. A long pause in Section 3 "
-        "on first use: `misaki` is downloading the spaCy `en_core_web_sm` model.\n\n"
+        "parameter or shorten the BYOD file, then select Section 4 and choose **Runtime → Run after**. In Section 4 with "
+        "`USE_BYOD = True`: `no file uploaded` — the upload dialog was cancelled, run the cell again and choose one file; "
+        "`is not UTF-8 text` — save the file as UTF-8 and supply it again; `needs a file: this runtime has no Colab "
+        "upload dialog` or `BYOD_PATH ... is not a file` — put the path of your `.txt` file in `BYOD_PATH`. "
+        "`espeak_fallback: False` in Section 3 with words missing from the `phonemes` string in Section 6: the bundled "
+        "espeak-ng library did not bind on this host — restrict the text to dictionary words. `WARNING: ... line(s) "
+        "produced no audio` in Section 6: those lines held only symbols or only words the G2P could not pronounce — reword them; "
+        "`RuntimeError: no audio produced` means every line was like that.\n\n"
         "**Next experiments.** Change `VOICE` to another `af_`/`am_` pack and compare the renderings of the same "
         "sentence; set `SPEED` to 0.8 and 1.5 and compare `duration_s`; run the same seed twice and diff the two WAV "
-        "digests to see the seeded determinism on your host; upload a paragraph with names and numbers via `USE_BYOD` "
-        "and inspect the `phonemes` string for dropped words; re-transcribe the WAV with the `whisper-asr-pipeline` "
+        "digests to see the seeded determinism on your host; supply a paragraph with names and numbers via `USE_BYOD` "
+        "and inspect the `phonemes` string for dropped words and the `chunks_per_line` count for long lines; re-transcribe the WAV with the `whisper-asr-pipeline` "
         "sibling and compute WER against the input as the first step towards the intelligibility number the evaluation "
         "report asks for. None of these turns the sample result into evidence of production fitness.\n\n"
         "## References\n\n"

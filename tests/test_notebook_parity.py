@@ -1,4 +1,4 @@
-"""NOTEBOOK_SPEC 2.0 parity tests (PAR1–PAR3) for the standalone tutorial notebook.
+"""NOTEBOOK_SPEC 2.2 parity tests (PAR1–PAR3) for the standalone tutorial notebook.
 
 The notebook carries `src/<package>/pipeline.py` verbatim; these tests fail whenever the carried
 cell, the inline manifest, or the inline pins diverge from the repository at HEAD.
@@ -104,4 +104,9 @@ def test_st1_primary_path_has_no_repository_dependency(notebook: dict) -> None:
     assert "git" not in re.findall(r"subprocess\.run\(\[([^\]]*)\]", code).__str__()
     assert f"import {TEMPLATE['package']}" not in code
     assert f"from {TEMPLATE['package']}" not in code
-    assert "github.com" not in code
+    # The only github.com URL is the spaCy model wheel in the carried hash lock (KTT-B1: no runtime pip).
+    spacy_wheel = (
+        "https://github.com/explosion/spacy-models/releases/download/"
+        "en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"
+    )
+    assert code.count("github.com") == code.count(spacy_wheel) == 1

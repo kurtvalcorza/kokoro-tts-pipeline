@@ -1,6 +1,6 @@
 """Static release-asset validation for the Kokoro-82M text-to-speech DIMER pipeline.
 
-Checks the STANDALONE tutorial notebook (DIMER Notebook Specification 2.0 §4), the tutorial
+Checks the STANDALONE tutorial notebook (DIMER Notebook Specification 2.2 §4), the tutorial
 registry, model card, README, STATUS.md and weight documentation for source conformance and
 cross-document identity consistency, and runs the generator parity checks (PAR1–PAR3).
 
@@ -54,6 +54,31 @@ CODE_MARKERS = (
     "'model_revision': MODEL_REVISION",
     "'model_license': MODEL_LICENSE",
     "'device': pipe.device",
+    # KTT-m2: line coverage instead of one segment per line; a skipped line is a named warning, not an error
+    "lines_with_text = [i for i, part in enumerate(text_lines(text)) if part.strip()]",
+    "'every_line_voiced_or_reported': result['skipped_lines'] is not None and sorted(voiced_lines + [s['line'] for s in skipped_lines]) == lines_with_text",
+    "if skipped_lines:",
+    "'line_coverage': {'lines': result['lines'], 'chunks': len(result['segments']), 'skipped_lines': result['skipped_lines']}",
+    # KTT-m3: a path field on any runtime, named errors for a cancelled upload, no dialog and non-UTF-8 text
+    "BYOD_PATH = ''",
+    "raise ValueError('no file uploaded; rerun this cell and choose one UTF-8 .txt file')",
+    "text = decode_byod_text(payload, sample_name)",
+    # the inline player is HTML, so it also renders from the isolated environment
+    "show(WavPlayer(wav_path))",
+)
+# Learner-facing text the review fixes removed; it must not come back (KTT-B1/KTT-M1 the in-kernel install and its
+# restart, KTT-m2 the wrong truncation statement, the runtime spaCy download that the lock now replaces).
+STALE_MARKDOWN = (
+    "Restart the runtime",
+    "restart the runtime",
+    "Core dependencies changed",
+    "installs the pinned dependencies",
+    "truncates any single segment",
+    "are truncated by the library",
+    "510-phoneme segment cap",
+    "Google Colab or Jupyter, Python 3.12",
+    "is downloading the spaCy",
+    "one segment per line",
 )
 # Profile-specific learner-facing statements.
 MARKDOWN_MARKERS = (
@@ -65,7 +90,11 @@ MARKDOWN_MARKERS = (
     "the verdict is always `not-measurable`",
     "**Trust boundary:** the checkpoint and the voice packs are PyTorch pickle files",
     "`MAX_TEXT_CHARS`",
-    "510-phoneme segment cap",
+    # KTT-m2: what the library actually does with a long line and an empty one
+    "a line above 510 phonemes is split",
+    "phonemises to nothing",
+    # KTT-B1: the notebook supplies its own Python 3.12, whatever the kernel runs
+    "the kernel's own Python version does not matter",
     "voice cloning or speaker adaptation",
     "speech-to-text (the `whisper-asr-pipeline` sibling covers that)",
 )
@@ -88,10 +117,10 @@ FORBIDDEN_OUTSIDE_MODULE = (
 # ---------------------------------------------------------------------------
 # Shared checks. Everything below is source/structure validation only. Passing
 # these checks is NOT clean-runtime execution evidence under DIMER Notebook
-# Specification 2.0; see docs/release-verification.md for the release gate.
+# Specification 2.2; see docs/release-verification.md for the release gate.
 # ---------------------------------------------------------------------------
 
-NOTEBOOK_SPEC = "2.0"
+NOTEBOOK_SPEC = "2.2"
 ALLOWED_PROFILES = {"E2E", "ARTIFACT-INFERENCE", "TASK-INFERENCE", "MULTI-CAPABILITY", "SMOKE"}
 STATUS_TOKENS = ("Candidate", "Release-grade")
 PLACEHOLDER = re.compile(r"\b(TODO|TBD|FIXME)\b|Insert text here|Tooltip:", re.I)
@@ -129,9 +158,6 @@ COMMON_CODE_MARKERS = (
     "PINS = [",
     "NOTEBOOK_SOURCE = {",
     "SKIP_INSTALL = os.environ.get('DIMER_NOTEBOOK_CI_PREINSTALLED') == '1'",
-    "subprocess.run([sys.executable, '-m', 'pip', 'install', '-q', *PINS], check=True)",
-    "importlib.metadata.packages_distributions()",
-    "importlib.invalidate_caches()",
     "platform.python_version()",
     "torch.__version__",
     "MANIFEST = {",
@@ -169,7 +195,8 @@ COMMON_MARKDOWN_MARKERS = (
 # Patterns that must never appear in tutorial code (comment-stripped), in any cell.
 FORBIDDEN_PATTERNS = (
     ("credential in clone URL", re.compile(r"https://[^/'\"\s]*@github\.com/|x-access-token:")),
-    ("repository clone (ST1)", re.compile(r"\bgit\b[^\n]*\bclone\b|github\.com")),
+    # The one github.com URL allowed is the spaCy model wheel in the carried hash lock (fetched by uv, SHA-256 checked).
+    ("repository clone (ST1)", re.compile(r"\bgit\b[^\n]*\bclone\b|github\.com(?!/explosion/spacy-models/releases/download/en_core_web_sm-3\.8\.0/)")),
     ("editable self-install", re.compile(r"""['"](?:-e|--editable)['"]|pip install (?:-e|--editable)\b""")),
     ("repository package import (ST1)", re.compile(rf"^\s*(?:from|import)\s+{PACKAGE}\b", re.M)),
     ("mutable model reference (MOD14)", re.compile(r"revision\s*=\s*['\"](?:main|latest)['\"]")),
@@ -387,6 +414,29 @@ def validate_release_status() -> None:
         "## Recorded executions" in verification,
         "docs/release-verification.md must have '## Recorded executions'",
     )
+    validate_run_all_claims()
+
+
+# KTT-m1: a document may call the notebook's Run all "verified" only when the current notebook blob is the one recorded.
+VERIFIED_RUN_ALL = re.compile(r"verified\s*[—-]+\s*clean-runtime|Run[- ]all[^.\n|]{0,40}\bverified\b", re.I)
+
+
+def notebook_blob(path: Path) -> str:
+    """The Git blob id of the notebook as committed (LF line endings), i.e. `git rev-parse HEAD:<path>`."""
+    data = path.read_bytes().replace(b"\r\n", b"\n")
+    return hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()
+
+
+def validate_run_all_claims(root: Path = ROOT) -> None:
+    blob = notebook_blob(root / "tutorials" / NOTEBOOK_NAME)
+    verification = _read(root / "docs" / "release-verification.md")
+    for name in ("README.md", "STATUS.md", "tutorials/README.md"):
+        text = _read(root / name)
+        if VERIFIED_RUN_ALL.search(text):
+            _check(
+                blob in text and blob in verification,
+                f"{name} calls Run all verified, but the current notebook blob {blob} is not named there and recorded in docs/release-verification.md (KTT-m1)",
+            )
 
 
 def _validate_notebook_structure(path: Path, notebook: dict) -> tuple[list[tuple[int, str, ast.Module]], str]:
@@ -566,6 +616,18 @@ def _validate_notebook_content(
         f"pipe = {PIPELINE_CLASS}.from_pretrained(weights_dir=WEIGHTS_DIR)" in outside,
         f"{path.name}: must load through {PIPELINE_CLASS}.from_pretrained(weights_dir=WEIGHTS_DIR) (INF1)",
     )
+    # KTT-B1 / KTT-M1: exactly two kernel cells (the isolated install and the router); every other cell runs in the
+    # managed Python 3.12.12 uv environment, so nothing is pip-installed into the kernel and no restart is needed.
+    kernel_raw = [source for _index, source, _tree in code_cells if "# dimer: kernel cell" in source]
+    _check(len(kernel_raw) == 2, f"{path.name}: exactly two kernel cells (isolated install and router) are expected (KTT-B1)")
+    install = next((k for k in kernel_raw if "LOCK_TEXT = r" in k), "")
+    for needed in ('"--managed-python"', '"--require-hashes"', '"--only-binary"', '":all:"', "UV_SHA256", "LOCK_SHA256", 'platform.machine() != "x86_64"', "MANAGED_PYTHON = '3.12.12'"):
+        _check(needed in install, f"{path.name}: the isolated install cell must use {needed} (KTT-B1)")
+    _check("en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/" in install, f"{path.name}: the lock must carry the spaCy model wheel (no runtime pip download in the uv environment)")
+    _check("_ip.input_transformers_cleanup.append(_route_to_isolated_runtime)" in "\n".join(kernel_raw), f"{path.name}: later cells must be routed to the isolated environment (KTT-B1)")
+    _check("module.__spec__ = importlib.machinery.ModuleSpec(name, None, is_package=package)" in "\n".join(kernel_raw), f"{path.name}: the worker's google.colab stubs must carry a module spec")
+    stale_md = [marker for marker in STALE_MARKDOWN if marker in markdown]
+    _check(not stale_md, f"{path.name}: stale learner-facing text: {stale_md}")
     _validate_gates(path, code_cells)
     _validate_bootstrap_guard(path, code_cells)
     for filename in EXPECTED_OUTPUTS:
