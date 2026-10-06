@@ -4,7 +4,8 @@
 2.2) is a **release candidate** until the exact notebook revision has executed top-to-bottom with **Run all**, in one
 pass and with no manual restart, in a clean supported runtime. Unit tests, JSON validation, code-cell compilation, the
 generator parity checks and `tools/validate_release_assets.py` are necessary checks but are **not** runtime evidence.
-No `Run all` of the current notebook is recorded (see below).
+No `Run all` of the current notebook is recorded (see below); the current blob has one recorded hosted execution, a
+Colab CLI sequential execution on a fresh Tesla T4 (2026-10-06), which is not a browser `Run all`.
 
 ## Automatic coverage (static, every pull request)
 
@@ -133,12 +134,45 @@ Notebook identity is the Git blob of `tutorials/kokoro_tts_colab.ipynb` at the s
 
 | Date (UTC) | Commit / notebook blob | Executor | Path exercised | Cell wall / total | Outcome |
 |---|---|---|---|---|---|
+| 2026-10-06 | `4720e3d5efbf343678b179c3c4b1e3b8dcc040e5` / `e09ef027967ffe4c1e51937cb8e2482c73d8b01c` | Colab CLI 0.7.4 sequential execution, fresh Colab VM, Tesla T4; default kernel Python 3.13.15, notebook-built isolated Python 3.12.12 | Default sample only (`USE_BYOD = False`, `af_heart`, speed 1.0, seed 0), no repository checkout, fresh VM with empty cache and weights directory | 126.4 s total (session start to stop) | 10/10 code cells in one pass, no restart, 0 errors — not a browser `Run all`; [evidence](verification/2026-10-06-colab-t4/) |
 | 2026-09-13 | `bf509157c7133a863aa891bf7b88087b1464b946` / `ca60f5f4f3b6c3dbf48f44a0aeaeedab4c7880ad` | Colab CLI → fresh Python 3.12.3 venv/interpreter built by the driver, not by the notebook; Tesla T4, 15,360 MiB | Unchanged default sample of that earlier blob, no repository checkout, empty per-model cache and weights | 184.518 s / 188.984 s | Completed 8/8 cells — not a `Run all`; listening and evidence review pending; [Retained run](verification/2026-09-13/README.md) |
 
 The run used PyTorch `2.14.0+cu130`, `cuda:0` and `float32`. All eight code cells completed, runtime pins matched, every snapshot file was SHA-256 verified, inputs were accepted, and the negative validation probe was recorded. Results, model identity/revision, observed output, warnings, package versions, notebook outputs, executor source and cleanup evidence are retained in [the run record](verification/2026-09-13/README.md).
 
-The native hosted kernel was Python 3.13.15; the direct notebook attempt there was aborted in installation, because `kokoro` 0.9.4 and `misaki` 0.9.4 declare `Requires-Python <3.13`. The run above therefore exercised the notebook's cells, not its install path: the driver built the Python 3.12 environment itself. On a Python 3.12 kernel the former in-kernel install would also have replaced pre-imported NumPy/torch and stopped with a restart request, which is not a one-pass `Run all` either (review KTT-B1, KTT-M1). The current notebook replaces that install with an isolated `uv` environment whose managed Python 3.12.12 does not depend on the kernel; it has not been executed on a hosted runtime yet.
+The native hosted kernel was Python 3.13.15; the direct notebook attempt there was aborted in installation, because `kokoro` 0.9.4 and `misaki` 0.9.4 declare `Requires-Python <3.13`. The run above therefore exercised the notebook's cells, not its install path: the driver built the Python 3.12 environment itself. On a Python 3.12 kernel the former in-kernel install would also have replaced pre-imported NumPy/torch and stopped with a restart request, which is not a one-pass `Run all` either (review KTT-B1, KTT-M1). The current notebook replaces that install with an isolated `uv` environment whose managed Python 3.12.12 does not depend on the kernel; its first hosted execution is recorded below.
+
+### 2026-10-06 — Colab CLI sequential execution, fresh Tesla T4 (blob `e09ef027`)
+
+- **Source:** commit `4720e3d5efbf343678b179c3c4b1e3b8dcc040e5`, notebook blob `e09ef027967ffe4c1e51937cb8e2482c73d8b01c`,
+  fetched byte-exact from `raw.githubusercontent.com` at that commit and blob-checked before the VM was allocated.
+- **Executor:** Colab CLI 0.7.4 sequential execution (`colab exec -f`), fresh Colab VM, Tesla T4. Every code cell ran in
+  order in one kernel. This is **not** a browser `Run all`: no forms were rendered and the notebook was not opened from
+  GitHub. The CLI sets no execution counts; the order 1..10 is taken from `exec.log` (`Executing cell k/10`).
+- **Path:** default settings only (`USE_BYOD = False`, `BYOD_PATH = ''`, `VOICE = 'af_heart'`, `SPEED = 1.0`, `SEED = 0`).
+- **Outcome:** code cells 10/10, **one pass, no restart, 0 errors**; wall time 126.4 s from session start to stop.
+  Cell 4 (the carried module) defines code and prints nothing; every other code cell has output.
+- **Runtime printed by the run:** kernel Python 3.13.15; isolated Python 3.12.12 built by Section 1 with 112 locked
+  packages in 61 s; `NOTEBOOK_SOURCE.repository_revision` `a045e03bfa4b6ff08634f99e52747976bfc23d0f`, module SHA-256
+  `0848237f…2d65d`, generator `build_notebook.py/2.1`, spec 2.2; torch `2.14.0+cu130`, `kokoro` 0.9.4, `misaki` 0.9.4,
+  `soundfile` 0.14.0, CUDA available, device `cuda:0`.
+- **Stages:** 58 of 58 manifest files fetched from `hexgrad/Kokoro-82M` at `f3ff3571791e39611d31c381e3a41a3af07b4987`
+  (355,493,259 bytes) and SHA-256 verified; loader `source 'local-snapshot'`; ceilings as specified; input manifest
+  verdict `accepted` with one rejection finding (`bf_emma` is not a `lang_code='a'` voice), voice inventory 54.
+- **Observations (run-level facts, not metrics):** `num_samples` 78,000, `duration_s` 3.25, `peak_amplitude`
+  0.33720338344573975, RMS 0.0472, synthesis 2.337 s; all six sanity checks true; 1 line, 1 chunk, `skipped_lines`
+  empty; `espeak_fallback` true; phonemes `ðə kwˈɪk bɹˈWn fˈɑks ʤˈʌmps ˈOvəɹ ðə lˈAzi dˈɔɡ.`; WAV 16-bit PCM, SHA-256
+  `daf4a8cf38a11e3c19fc316ac3ff5a9b5524e8ef33d18846c5d1fcc41f67fc55` — the same digest, sample count and peak as
+  the 2026-09-13 run. Evaluation report verdict `not-measurable`, empty `metrics`, the "No metric is reported" line
+  printed; four files written under `outputs/`.
+- **Warnings seen (all documented in the notebook):** `num2words` `SyntaxWarning: invalid escape sequence` (Portuguese
+  module), PyTorch LSTM `dropout` with one layer, deprecated `weight_norm` and `torch.jit.script`.
+- **Evidence files** (`docs/verification/2026-10-06-colab-t4/`, byte-exact copies, SHA-256):
+  - `kokoro_tts_colab_4720e3d_colab-cli-t4_output.ipynb` — `ef2a474a7ae2396581ba5b4c599066987677aec9b8b956731cc9a3ced9cd960b`
+  - `run_summary.json` — `e6e01bfa2bcd6fafe2f3396ced1da4ec8f6e6e30c2eb816bc2fdc5806afe82e4`
+  - `exec.log` — `9c0a6e6ee4660ac78b9a804ea4aa4bb051fe7e8c872fd137aeca278040ebac81`
+- **Not exercised:** a browser `Run all`, the BYOD gate (step 6: long line, symbols-only line, cancelled upload), the
+  Kaggle run, the next experiments, and the listening review of the WAV.
 
 ## Current status
 
-**Candidate.** No `Run all` of the current notebook blob is recorded. The 2026-09-13 run is default-sample inference/contract evidence for an earlier blob; it does not establish model quality or a benchmark result, and Kokoro listening review is still pending (WAV structure and digest were checked, audible intelligibility and perceptual quality were not). Outstanding before promotion: a one-pass hosted `Run all` of the current blob on Colab (default kernel) and Kaggle with no restart, the BYOD gate in step 6, evidence review and the listening review. This documentation performs no promotion.
+**Candidate.** No `Run all` of the current notebook blob is recorded. The current blob `e09ef027` completed one Colab CLI sequential execution on a fresh Tesla T4 (2026-10-06: 10/10 code cells, one pass, no restart, 0 errors, default sample only), which is default-path execution evidence, not a browser `Run all`. The 2026-09-13 run is default-sample inference/contract evidence for an earlier blob; it does not establish model quality or a benchmark result, and Kokoro listening review is still pending (WAV structure and digest were checked, audible intelligibility and perceptual quality were not). Outstanding before promotion: a one-pass hosted `Run all` of the current blob on Colab (default kernel) and Kaggle with no restart (the 2026-10-06 CLI execution does not replace it), the BYOD gate in step 6, evidence review and the listening review. This documentation performs no promotion.

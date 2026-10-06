@@ -57,7 +57,7 @@ Measured on CPU (float32, Windows venv, 2026-09-12): load 6.22 s, 3.25 s of audi
 
 ## Release status
 
-**Candidate.** No `Run all` of the current notebook is recorded. The one recorded hosted run (2026-09-13, Colab Tesla T4) executed an earlier notebook blob's cells one by one in a separately built Python 3.12.3 venv; it is inference/contract evidence for that blob, not a `Run all` in a supported kernel ([record](docs/release-verification.md)). Release promotion awaits a one-pass hosted `Run all` of the current notebook, evidence review and Kokoro listening review; these sample execution checks do not measure general model quality.
+**Candidate.** No `Run all` of the current notebook is recorded. The one recorded hosted run (2026-09-13, Colab Tesla T4) executed an earlier notebook blob's cells one by one in a separately built Python 3.12.3 venv; it is inference/contract evidence for that blob, not a `Run all` in a supported kernel ([record](docs/release-verification.md)). The current notebook's isolated Python 3.12.12 environment has one recorded hosted execution: a Colab CLI sequential execution on a fresh Tesla T4 (2026-10-06, blob `e09ef027`: 10/10 code cells, one pass, no restart, 0 errors, default sample only), which is not a browser `Run all`. Release promotion awaits a one-pass hosted `Run all` of the current notebook, evidence review and Kokoro listening review; these sample execution checks do not measure general model quality.
 
 ## Documents
 
