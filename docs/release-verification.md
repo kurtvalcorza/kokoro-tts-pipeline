@@ -1,5 +1,7 @@
 # Release verification
 
+**Pending hosted run (REL14).** **Safetensors serving (2026-10-24).** The model and voices are now served from `kokoro-v1_0.safetensors` and `voices.safetensors`, conversions of the upstream `.pth` checkpoint and the 54 `.pt` voice packs whose SHA-256 digests (`bf1093331680…`, `35597f0f9fab…`) are pinned in code, instead of from the pickles (code commit `962b5db`). The regenerated notebook `tutorials/kokoro_tts_colab.ipynb` is blob `5c7f9377bf24`. No hosted run of this blob is recorded yet, so it is Candidate until one is (REL14); every hosted run recorded in this repository executed an earlier blob and stays as history, not evidence for this one.
+
 `tutorials/kokoro_tts_colab.ipynb` (`TASK-INFERENCE`, `GUIDED`, **standalone** carrier, DIMER Notebook Specification
 2.2) is a **release candidate** until the exact notebook revision has executed top-to-bottom with **Run all**, in one
 pass and with no manual restart, in a clean supported runtime. Unit tests, JSON validation, code-cell compilation, the
