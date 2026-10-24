@@ -202,8 +202,15 @@ FORBIDDEN_PATTERNS = (
     ("mutable model reference (MOD14)", re.compile(r"revision\s*=\s*['\"](?:main|latest)['\"]")),
     ("trust_remote_code enabled", re.compile(r"trust_remote_code\s*[=:]\s*True")),
     (
+        # The carried module reads the upstream pickles once, with weights_only=True, to write the safetensors
+        # files it serves from; any other torch.load (unqualified, or weights_only=False) stays banned.
         "unsafe deserialization",
-        re.compile(r"\bpickle\.load|\btorch\.load\s*\(|getattr\(\s*torch\s*,\s*['\"]load['\"]"),
+        re.compile(
+            r"\bpickle\.load"
+            r"|\btorch\.load\s*\((?![^)]*weights_only\s*=\s*True)"
+            r"|weights_only\s*=\s*False"
+            r"|getattr\(\s*torch\s*,\s*['\"]load['\"]"
+        ),
     ),
     ("archive extractall", re.compile(r"\.extractall\s*\(")),
     ("notebook magic or shell escape", re.compile(r"(?m)^\s*[%!]|get_ipython\(\)")),
@@ -340,8 +347,16 @@ def validate_identity_consistency() -> None:
 # (dataset files, upstream files that are not staged, origin checkpoints, totals). Declared entries
 # that no document cites any more are rejected, so the allowlist cannot go stale.
 WEIGHT_DOCS = ("README.md", "MODEL_CARD.md", "docs/WEIGHTS.md")
-EXTERNAL_WEIGHT_BYTES: dict[int, str] = {}
-EXTERNAL_WEIGHT_DIGESTS: dict[str, str] = {}
+# The safetensors conversions of the staged snapshot are not manifest files (`convert_checkpoint` writes them
+# locally); their digests equal the package's CONVERTED_*_SHA256 (a test checks it).
+EXTERNAL_WEIGHT_BYTES: dict[int, str] = {
+    327_317_520: "safetensors conversion of the checkpoint (served file)",
+    28_205_400: "safetensors conversion of the 54 voice packs (served file)",
+}
+EXTERNAL_WEIGHT_DIGESTS: dict[str, str] = {
+    "bf109333168098b2200e878959872ba8a095b089d9c18f9d0d36b25cded3ca5f": "safetensors conversion of the checkpoint (CONVERTED_WEIGHTS_SHA256)",
+    "35597f0f9fab89c0da7366cfc8550ff78e10c453dc15d15eaba374ff1f0fba1e": "safetensors conversion of the voice packs (CONVERTED_VOICES_SHA256)",
+}
 _DIGEST = re.compile(r"(?<![0-9a-fA-F])[0-9a-f]{64}(?![0-9a-fA-F])")
 _GROUPED = r"(\d{1,3}(?:[,\u202f\u00a0 ]\d{3})+|\d+)"
 _BYTE_COUNT = re.compile(r"(?<![\d,\-])" + _GROUPED + r"\s*bytes\b|totalBytes`?\s*" + _GROUPED)

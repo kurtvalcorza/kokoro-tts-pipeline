@@ -15,6 +15,7 @@ dependencies = [
   "numpy==2.5.3",
   "huggingface-hub==0.36.2",
   "soundfile==0.14.0",
+  "safetensors==0.8.0",
 ]
 [project.optional-dependencies]
 dev = ["pytest==8.4.2", "ruff==0.16.6"]
