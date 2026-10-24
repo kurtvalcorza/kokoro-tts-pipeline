@@ -30,8 +30,8 @@ HEX40 = re.compile(r"^[0-9a-f]{40}$")
 VOICES = ("af_heart", "af_bella", "bm_george")
 
 
-def _fake_runner(text, voice_path, speed):
-    assert voice_path.endswith(".pt")
+def _fake_runner(text, voice, speed):
+    assert voice in VOICES
     for i, line in enumerate(text.split("\n")):
         if not line.strip():
             continue
@@ -68,7 +68,7 @@ def test_identity_constants_are_40_hex_and_named():
     assert DEFAULT_WEIGHTS_DIR.name == MODEL_KEY
     assert DEFAULT_WEIGHTS_DIR.parent.name == "weights"
     assert SAMPLE_RATE == 24000
-    assert WEIGHT_FORMAT == "pytorch-pickle" and LOADER_WEIGHTS_ONLY is True
+    assert WEIGHT_FORMAT == "safetensors" and LOADER_WEIGHTS_ONLY is True
     assert DEFAULT_LANG_CODE in LANG_CODES and DEFAULT_VOICE[0] == DEFAULT_LANG_CODE
     assert 0 < MIN_SPEED < 1.0 <= MAX_SPEED
 

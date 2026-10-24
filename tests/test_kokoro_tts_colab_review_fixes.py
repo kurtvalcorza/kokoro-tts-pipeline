@@ -145,7 +145,7 @@ def test_worker_colab_stubs_have_specs(monkeypatch, real_google):
 # --- KTT-m2: long lines are chunked, empty lines are reported, prose matches ------------------------------------------
 
 
-def _chunking_runner(text, voice_path, speed):
+def _chunking_runner(text, voice, speed):
     """Mimics kokoro 0.9.4 KPipeline.__call__: lines split on SPLIT_PATTERN; a line above 200 characters yields two
     chunks (the real library splits above 510 phonemes); a line of only 'XQZV'-style words yields nothing."""
     for index, line in enumerate(re.split(r"\n+", text.strip())):
@@ -169,7 +169,7 @@ def test_synthesize_reports_chunks_per_line_and_skipped_lines():
 
 
 def test_a_three_tuple_runner_leaves_line_coverage_unknown():
-    def runner(text, voice_path, speed):
+    def runner(text, voice, speed):
         yield "hi", "haɪ", np.full(10, 0.1, dtype=np.float32)
 
     result = _pipe(runner).synthesize("hi")
