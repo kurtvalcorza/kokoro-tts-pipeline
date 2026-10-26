@@ -61,7 +61,8 @@ CODE_MARKERS = (
     "'line_coverage': {'lines': result['lines'], 'chunks': len(result['segments']), 'skipped_lines': result['skipped_lines']}",
     # KTT-m3: a path field on any runtime, named errors for a cancelled upload, no dialog and non-UTF-8 text
     "BYOD_PATH = ''",
-    "raise ValueError('no file uploaded; rerun this cell and choose one UTF-8 .txt file')",
+    # DAT20: the cancelled upload is a one-line refusal
+    "raise BYODRefusal('(no file)', 'no file uploaded (the upload was cancelled or empty); run this cell again and choose one UTF-8 .txt file')",
     "text = decode_byod_text(payload, sample_name)",
     # the inline player is HTML, so it also renders from the isolated environment
     "show(WavPlayer(wav_path))",
