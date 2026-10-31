@@ -273,15 +273,15 @@ def test_byod_errors_name_the_fix(monkeypatch, tmp_path):
     latin.write_bytes("café crème".encode("latin-1"))
     with pytest.raises(ValueError, match="is not UTF-8 text .* save it as UTF-8"):
         _section4(monkeypatch, tmp_path, str(latin))
-    with pytest.raises(FileNotFoundError, match="BYOD_PATH 'missing.txt' is not a file"):
+    with pytest.raises(ValueError, match="^missing.txt: BYOD_PATH 'missing.txt' is not a file"):
         _section4(monkeypatch, tmp_path, "missing.txt")
-    with pytest.raises(RuntimeError, match="no Colab upload dialog, so set BYOD_PATH"):
+    with pytest.raises(ValueError, match=r"^\(no file\): USE_BYOD = True needs a file: this runtime has no Colab upload dialog, so set BYOD_PATH"):
         _section4(monkeypatch, tmp_path)
 
 
 def test_cancelled_and_multiple_uploads_are_named_and_one_upload_works(monkeypatch, tmp_path):
     _fake_colab(monkeypatch, [{}, {"a.txt": b"a", "b.txt": b"b"}, {"mine.txt": "Hej då.".encode()}])
-    with pytest.raises(ValueError, match=r"^no file uploaded; rerun this cell and choose one UTF-8 \.txt file$"):
+    with pytest.raises(ValueError, match=r"^\(no file\): no file uploaded \(the upload was cancelled or empty\); run this cell again and choose one UTF-8 \.txt file"):
         _section4(monkeypatch, tmp_path)
     with pytest.raises(ValueError, match="2 files uploaded"):
         _section4(monkeypatch, tmp_path)

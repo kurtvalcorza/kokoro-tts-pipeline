@@ -1,0 +1,70 @@
+{
+  "repo": "kokoro-tts-pipeline",
+  "sha": "e75de79767a26856d17badccc530409fa6fa05c4",
+  "notebook": "tutorials/kokoro_tts_colab.ipynb",
+  "blob": "49aaadfe73e98d440170f82fd733f11d566cafb6",
+  "gpu": "T4",
+  "session": "suite-kokoro-e75de79-a01a",
+  "started_utc": "2026-10-30T19:00:28+00:00",
+  "runner": "Colab CLI `colab exec -f` on a fresh session (not a browser Run all)",
+  "overrides": [
+    {
+      "name": "USE_BYOD",
+      "from": "False",
+      "to": "True"
+    },
+    {
+      "name": "BYOD_PATH",
+      "from": "''",
+      "to": "'/content/sample_data/california_housing_test.csv'"
+    }
+  ],
+  "run_copy_blob": "14bb500450aa6cba95b479eb843d67d07a13e17e",
+  "run_copy_sha256": "c9024c08d821a7284f0ccb5a4bfea69051aa88c65cddfe0e2b2509b0535ed5d3",
+  "run_copy_note": "refusal run: the run copy is the committed notebook with the listed assignment overrides, cut immediately after the refusal cell and re-serialised (nbformat layout); input_unchanged compares against that copy",
+  "truncated_after_cell": "kokoro_tts-13",
+  "refusal_cell_ref": "kokoro_tts-13",
+  "refusal_cell_index": 6,
+  "cells_dropped": 9,
+  "code_cells_dropped": 4,
+  "original_sha256": "831917e80554e13a75ae487aa3312121256e4fe49a7d6bc1b9c1f23b62237a3b",
+  "status": "[suite-kokoro-e75de79-a01a] gpu-t4-s-usw4a1-1cnsbjphhckr | Hardware: T4 | Shape: Standard | Variant: GPU | Status: IDLE",
+  "exec_exit_code": 0,
+  "stopped": true,
+  "stop_verified": true,
+  "wall_s": 144.9,
+  "input_unchanged": true,
+  "executed_file": "kokoro_tts_colab_e75de79_colab-cli-t4_output.ipynb",
+  "log_cells": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
+  "log_total": 6,
+  "code_cells": 6,
+  "executed_cells": 5,
+  "errors": [
+    {
+      "cell": "kokoro_tts-13",
+      "ename": "IsolatedCellRefusal",
+      "evalue": "california_housing_test.csv: the text has 301140 characters; the limit is MAX_TEXT_CHARS=2000: shorten it and run this cell again (the earlier results of this session and their outputs/ files were removed)."
+    }
+  ],
+  "execution_counts": [],
+  "sequential": null,
+  "executed_sha256": "bb97fb5330fb3d326237a34fc95d154f797749a4387155c4a74c080ec47a6fc3",
+  "log_sequential_complete": true,
+  "mode": "expect_refusal",
+  "refusal_line": "Refused: california_housing_test.csv: the text has 301140 characters; the limit is MAX_TEXT_CHARS=2000: shorten it and run this cell again (the earlier results of this session and their outputs/ files were removed).",
+  "halting_cell_index": 6,
+  "halting_cell_id": "kokoro_tts-13",
+  "error_cells": [
+    6
+  ],
+  "refusal_fail_reasons": [],
+  "refusal_ok": true,
+  "verdict": "PASS"
+}
